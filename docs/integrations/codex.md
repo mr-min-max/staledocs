@@ -1,9 +1,6 @@
 # StaleDocs with local Codex
 
-This guide covers the published StaleDocs CLI with the official local Codex host
-and StaleDocs's provider-free MCP tools. The source checkout prepares the
-`0.4.0-beta.1` candidate; the npm beta channel remains on `0.3.0-beta.1` until
-publication. It is not a ChatGPT web integration or a marketplace installation guide.
+This guide covers the published `0.4.0-beta.1` StaleDocs CLI with the official local Codex host and StaleDocs's provider-free MCP tools. It is not a ChatGPT web integration or a marketplace installation guide.
 
 For the complete command catalogue and beta boundaries, see [CLI.md](../CLI.md)
 and [Public Beta](../PUBLIC_BETA.md). The [GitHub Action reference](../GITHUB_ACTION.md)

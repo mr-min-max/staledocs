@@ -67,7 +67,8 @@ describe("public beta repository configuration", () => {
     );
     const script = packageJson.scripts["test:npm-published"];
     expect(packageJson.version).toBe("0.4.0-beta.1");
-    expect(script).toContain("--version 0.3.0-beta.1 --latest 0.3.0-beta.1");
+    expect(script).toContain("--version 0.4.0-beta.1");
+    expect(script).not.toContain("--latest");
     expect(packageJson.scripts["test:storefront"]).toBe(
       "node --test tests/e2e/storefront-demo.test.mjs tests/e2e/storefront-assets.test.mjs",
     );

@@ -1,6 +1,6 @@
 # StaleDocs CLI reference
 
-This is the complete command catalogue for the `0.4.0-beta.1` release candidate, which is not published yet. The npm beta channel below still provides the published `0.3.0-beta.1`.
+This is the complete command catalogue for the published `0.4.0-beta.1` beta.
 The executable is `staledocs`. For provider credentials, subscription and API
 billing boundaries, repository safety details, and current caveats, see the
 [Public Beta guide](./PUBLIC_BETA.md), [Limitations](./LIMITATIONS.md), and
@@ -376,7 +376,7 @@ repos:
       - id: staledocs-check
 ```
 
-The candidate hook pin becomes available after publication. Until then, use the published `v0.3.0-beta.1`.
+The immutable hook pin and moving `v0` tag both resolve to the published `0.4.0-beta.1` release.
 
 The hook runs `staledocs check --since HEAD` on `pre-push`. It does not pass filenames.
 Install Node.js and `staledocs` before enabling it.

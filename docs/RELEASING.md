@@ -6,36 +6,18 @@ This is the maintainer procedure for publishing StaleDocs. It separates reposito
 
 Merging a release-readiness pull request does not publish a package. The release workflow runs only after a matching `v*` tag is pushed. Do not create or push a release tag without a separate explicit publication decision made after every pre-release check below passes.
 
-## 0.4.0-beta.1 procedure
+## 0.4.0-beta.1 record
 
-Identical to 0.3.0-beta.1; no name claim needed. The repository rename and npm
-Trusted Publisher setup are already complete. Use the existing OIDC workflow,
-not a reusable npm credential or another bootstrap placeholder.
+Released on 2026-09-13 through the existing OIDC workflow with no reusable npm credential or name claim.
 
-1. Merge the reviewed PR A only after `npm run verify:release` and
-   `npm run test:public-beta` pass. The private live Codex check record is
-   already supplied for this version; a recorded failure is acceptable, an
-   unrun success claim is not.
-2. Fetch `origin/main`, pin its exact SHA, install with `npm ci`, and repeat the
-   release gates at that clean commit with hosted Node 22 and 24 CI green. Use
-   `scripts/verify-release-candidate.mjs` with tag `v0.4.0-beta.1` and the pinned
-   `--expected-sha` before and after the gates. Confirm Private vulnerability
-   reporting is enabled before the tag.
-3. After a separate owner publication decision, create and push only the
-   annotated `v0.4.0-beta.1` tag at that verified commit. The release workflow
-   publishes its verified tarball through OIDC with provenance and creates the
-   GitHub prerelease after npm accepts it.
-4. Verify the workflow and checksum-matching npm/GitHub artifacts. The owner
-   then moves npm `latest` and `beta` to `0.4.0-beta.1` and the existing moving
-   `v0` tag to `v0.4.0-beta.1`. Update Marketplace only if its description changed.
-5. Run PR B against the real published package with `--compare` and regenerate
-   `docs/EVALUATIONS.md`. Do not produce the new-version table before publication.
+- PR A was merged and the exact merged main commit passed `npm run verify:release`, `npm run test:public-beta`, and the release-candidate verifier before tagging.
+- Annotated tag `v0.4.0-beta.1` points to `29f8aed249d88ddbbb60daaea2bf9d9b8c3d88bc`.
+- The workflow verified Node.js 22 and 24, published `staledocs@0.4.0-beta.1` with provenance, and created the GitHub prerelease.
+- The npm and GitHub tarballs are byte-identical with SHA-256 `83afe2106fd97e8fa5efba24de483f9cfda852688a8a56a409ebb53d77afe062`.
+- npm `beta` and the moving GitHub Action `v0` tag point to `0.4.0-beta.1`. npm `latest` remains on `0.3.0-beta.1` until the owner completes npm authentication.
+- PR B runs the published package against the approved corpus and records the comparison in `docs/EVALUATIONS.md`.
 
-During PR A, `test:npm-published` remains pinned to the real published
-`0.3.0-beta.1` and its `latest` channel. Candidate package, lockfile, plugin,
-release notes, and Action examples use `0.4.0-beta.1`. After publication, PR B
-updates the live registry gate to the new published identity. No publication
-check is replaced by a mock or a local package.
+The reusable procedure remains: merge a verified release-readiness PR, pin clean main, repeat the release gates, confirm private vulnerability reporting, make a separate publication decision, push an annotated matching version tag, verify the OIDC workflow and matching artifacts, promote release channels, then record published-package evidence in a follow-up PR.
 
 The evaluation manifest holds the ten owner-approved labels. Run the old
 package with an evidence directory outside the public checkout:

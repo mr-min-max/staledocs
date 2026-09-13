@@ -2,7 +2,7 @@
 
 ## Now
 
-Phase 5 is preparing the StaleDocs `0.3.0-beta.1` release candidate. Remaining work is release verification, publication, and the owner-only repository, npm, Marketplace, and metadata actions.
+Roadmap 2 implementation, release, and ten-target evidence are delivered. The only remaining release action is moving npm `latest` after the owner completes npm authentication.
 
 ## Next
 

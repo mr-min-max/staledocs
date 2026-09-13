@@ -30,10 +30,7 @@ jobs:
           fail-on: none
 ```
 
-The examples are pinned to the `0.4.0-beta.1` release candidate, whose tag and npm
-package are not published yet. Before publication, use the published
-`@v0.3.0-beta.1`. The existing moving `@v0` tag remains on the published release
-until the owner advances it after publication.
+The examples use the immutable published `v0.4.0-beta.1` tag. The moving `v0` tag also points to this release.
 
 The comment starts with a hidden marker and lists changed signatures, affected
 sections, and whether each section changed in the pull request:

@@ -1,6 +1,6 @@
 # StaleDocs Public Beta
 
-`0.4.0-beta.1` is the StaleDocs release candidate and is not published yet. It uses the unscoped `staledocs` package and executable. The npm install channel below still resolves to the published `0.3.0-beta.1` until the owner publishes the candidate.
+`0.4.0-beta.1` is the published StaleDocs beta. It uses the unscoped `staledocs` package and executable; install it through the npm `beta` channel.
 
 StaleDocs checks documentation drift in pull requests through deterministic AST analysis for TypeScript, JavaScript, and Python. It reports changed public symbols, before and after signatures, sections that mention them, and optional `docs-stale` and `breaking-change` labels.
 
@@ -32,4 +32,4 @@ The provider-free host sequence is `plan_documentation_impact`, `prepare_documen
 
 ## Release record
 
-See the [0.4.0-beta.1 candidate notes](./releases/v0.4.0-beta.1.md) and the [0.3.0-beta.1 publication record](./releases/v0.3.0-beta.1.md).
+See the [0.4.0-beta.1 publication record](./releases/v0.4.0-beta.1.md) and the [0.3.0-beta.1 publication record](./releases/v0.3.0-beta.1.md).

@@ -67,7 +67,7 @@ See [LIMITATIONS.md](./docs/LIMITATIONS.md) for syntax and discovery caveats.
 
 ## Status and links
 
-Release candidate `0.4.0-beta.1` is not published yet. The npm beta badge and install channel below still refer to the published `0.3.0-beta.1` until the owner publishes the candidate.
+StaleDocs `0.4.0-beta.1` is published. The `beta` channel and GitHub Action `v0` tag use this release; npm `latest` follows after the owner completes npm authentication.
 
 [![npm](https://img.shields.io/npm/v/staledocs/beta?label=npm%20beta)](https://www.npmjs.com/package/staledocs)
 [![CI](https://github.com/mr-min-max/staledocs/actions/workflows/ci.yml/badge.svg)](https://github.com/mr-min-max/staledocs/actions/workflows/ci.yml)
