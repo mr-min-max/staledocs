@@ -67,7 +67,7 @@ See [LIMITATIONS.md](./docs/LIMITATIONS.md) for syntax and discovery caveats.
 
 ## Status and links
 
-StaleDocs `0.4.0-beta.1` is published. The `beta` channel and GitHub Action `v0` tag use this release; npm `latest` follows after the owner completes npm authentication.
+StaleDocs `0.4.0-beta.1` is published. npm `latest`, npm `beta`, and the GitHub Action `v0` tag all use this release.
 
 [![npm](https://img.shields.io/npm/v/staledocs/beta?label=npm%20beta)](https://www.npmjs.com/package/staledocs)
 [![CI](https://github.com/mr-min-max/staledocs/actions/workflows/ci.yml/badge.svg)](https://github.com/mr-min-max/staledocs/actions/workflows/ci.yml)

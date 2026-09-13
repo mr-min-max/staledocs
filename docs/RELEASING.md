@@ -14,7 +14,7 @@ Released on 2026-09-13 through the existing OIDC workflow with no reusable npm c
 - Annotated tag `v0.4.0-beta.1` points to `29f8aed249d88ddbbb60daaea2bf9d9b8c3d88bc`.
 - The workflow verified Node.js 22 and 24, published `staledocs@0.4.0-beta.1` with provenance, and created the GitHub prerelease.
 - The npm and GitHub tarballs are byte-identical with SHA-256 `83afe2106fd97e8fa5efba24de483f9cfda852688a8a56a409ebb53d77afe062`.
-- npm `beta` and the moving GitHub Action `v0` tag point to `0.4.0-beta.1`. npm `latest` remains on `0.3.0-beta.1` until the owner completes npm authentication.
+- npm `latest`, npm `beta`, and the moving GitHub Action `v0` tag point to `0.4.0-beta.1`.
 - PR B runs the published package against the approved corpus and records the comparison in `docs/EVALUATIONS.md`.
 
 The reusable procedure remains: merge a verified release-readiness PR, pin clean main, repeat the release gates, confirm private vulnerability reporting, make a separate publication decision, push an annotated matching version tag, verify the OIDC workflow and matching artifacts, promote release channels, then record published-package evidence in a follow-up PR.

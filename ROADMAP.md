@@ -2,7 +2,7 @@
 
 ## Now
 
-Roadmap 2 implementation, release, and ten-target evidence are delivered. The only remaining release action is moving npm `latest` after the owner completes npm authentication.
+Roadmap 2 is complete: implementation, release, moving channels, live Codex validation, and the ten-target before/after evidence are delivered.
 
 ## Next
 

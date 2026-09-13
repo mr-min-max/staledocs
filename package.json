@@ -27,7 +27,7 @@
     "demo:storefront": "npm run build && node scripts/demo-hybrid-beta.mjs --presentation",
     "test:storefront": "node --test tests/e2e/storefront-demo.test.mjs tests/e2e/storefront-assets.test.mjs",
     "test:npm-unpublished": "node --test tests/e2e/npm-unpublished.test.mjs",
-    "test:npm-published": "node --test tests/e2e/npm-published.test.mjs && node scripts/verify-npm-published.mjs --version 0.4.0-beta.1",
+    "test:npm-published": "node --test tests/e2e/npm-published.test.mjs && node scripts/verify-npm-published.mjs --version 0.4.0-beta.1 --latest 0.4.0-beta.1",
     "demo:impact": "npm run build && node scripts/demo-impact.mjs",
     "test:impact-demo": "node scripts/demo-impact.mjs --verify",
     "test:check": "npm run build && node tests/e2e/check-cli-smoke.mjs",
