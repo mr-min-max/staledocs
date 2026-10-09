@@ -20,6 +20,11 @@ All notable changes to this project are documented in this file.
   approved-action security invariants.
 - Defer major chalk, ora, TypeScript, and cosmiconfig migrations while
   retaining their minor, patch, and security update policy.
+- Update Anthropic and MCP SDKs and Handlebars, including upstream security fixes.
+- Update the OpenAI SDK, dotenv, and development tooling while retaining the
+  supported Node.js runtime floor.
+- Migrate Git history helpers to simple-git v4's named factory, preserving
+  repository-root, commit, diff, changed-file, and tag operations.
 
 ## [0.4.0-beta.1] - 2026-09-12
 
