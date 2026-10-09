@@ -10,6 +10,17 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - dependencies
+    # Major migrations need explicit module/toolchain/runtime review.
+    # Minor, patch, and security updates remain enabled.
+    ignore:
+      - dependency-name: chalk
+        update-types: ["version-update:semver-major"]
+      - dependency-name: ora
+        update-types: ["version-update:semver-major"]
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      - dependency-name: cosmiconfig
+        update-types: ["version-update:semver-major"]
     groups:
       production-minor-and-patch:
         dependency-type: production
