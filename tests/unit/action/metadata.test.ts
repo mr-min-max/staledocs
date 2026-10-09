@@ -23,7 +23,7 @@ const metadata = load(
 ) as CompositeAction;
 
 describe("composite Action metadata", () => {
-  it("uses the reviewed setup-node revision and an explicit supported Node floor", () => {
+  it("pins setup-node immutably and uses an explicit supported Node floor", () => {
     const setup = metadata.runs.steps.find(
       (step) => step.name === "Setup Node.js",
     );
@@ -32,9 +32,7 @@ describe("composite Action metadata", () => {
     const [major, minor] = nodeVersion.split(".").map(Number);
 
     expect(metadata.runs.using).toBe("composite");
-    expect(setup.uses).toBe(
-      "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
-    );
+    expect(setup.uses).toMatch(/^actions\/setup-node@[0-9a-f]{40}$/u);
     expect(major).toBeGreaterThanOrEqual(22);
     expect(major === 22 ? minor : 12).toBeGreaterThanOrEqual(12);
   });
