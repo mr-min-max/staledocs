@@ -8,6 +8,8 @@ Formerly aidoc.
 
 StaleDocs reads your code, finds public API changes in a pull request, and tells you which documentation sections now describe the old behavior.
 
+[Website](https://staledocs.com) · [GitHub Action setup](./docs/GITHUB_ACTION.md)
+
 ## Add to a repository in one file
 
 ```yaml
@@ -96,6 +98,7 @@ StaleDocs `0.4.0-beta.1` is published. npm `latest`, npm `beta`, and the GitHub 
 [![CI](https://github.com/mr-min-max/staledocs/actions/workflows/ci.yml/badge.svg)](https://github.com/mr-min-max/staledocs/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3FB950.svg)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D22.12-58A6FF.svg)](https://nodejs.org/)
+[![GitHub Action Marketplace](https://img.shields.io/badge/GitHub_Action-Marketplace-2088FF)](https://github.com/marketplace/actions/staledocs-documentation-drift-check)
 
 - [Contributing](./CONTRIBUTING.md)
 - [Security](./SECURITY.md)
