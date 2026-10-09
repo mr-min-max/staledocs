@@ -84,7 +84,7 @@
     "dotenv": "^18.0.5",
     "glob": "^11.0.2",
     "handlebars": "^4.7.8",
-    "openai": "^6.44.0",
+    "openai": "^7.28.0",
     "ora": "^5.4.1",
     "prompts": "^2.4.2",
     "simple-git": "^4.0.2",
