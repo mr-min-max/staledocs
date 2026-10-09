@@ -14,6 +14,12 @@ All notable changes to this project are documented in this file.
 - Include Claude plugin source artifacts in the public-beta integrity gate.
 - Remove plugin source-wording assertions and their demo/release wiring;
   validate the Claude manifests with the official host validator instead.
+- Review and update pinned setup-node, Codecov, and GitHub Release actions
+  without changing the supported Node.js floor or release permissions.
+- Replace literal action-revision assertions with immutable-pin and
+  approved-action security invariants.
+- Defer major chalk, ora, TypeScript, and cosmiconfig migrations while
+  retaining their minor, patch, and security update policy.
 
 ## [0.4.0-beta.1] - 2026-09-12
 
