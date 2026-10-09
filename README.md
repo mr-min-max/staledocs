@@ -2,6 +2,10 @@
 
 Formerly aidoc.
 
+<p align="center">
+  <img src="./docs/assets/demo/staledocs-flow-scene.png" alt="StaleDocs: a createUser(email) change linked to README.md and docs/API.md, ending in a reviewed documentation update." width="900">
+</p>
+
 StaleDocs reads your code, finds public API changes in a pull request, and tells you which documentation sections now describe the old behavior.
 
 ## Add to a repository in one file
@@ -21,6 +25,8 @@ jobs:
           mode: review
           fail-on: none
 ```
+
+![Example StaleDocs pull request review comment](./docs/assets/review-comment.png)
 
 ## What the comment contains
 
