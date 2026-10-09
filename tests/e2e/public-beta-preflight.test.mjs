@@ -63,12 +63,7 @@ const SOURCE_ARTIFACTS = {
     "dist/templates/update.hbs",
   ],
   storefrontStatic: [
-    "docs/assets/brand/staledocs-mark.svg",
-    "docs/assets/brand/staledocs-wordmark.svg",
-    "docs/assets/brand/staledocs-mark-on-dark.svg",
-    "docs/assets/brand/staledocs-mark-on-light.svg",
-    "docs/assets/brand/staledocs-mark-dark.png",
-    "docs/assets/brand/staledocs-mark-light.png",
+    "docs/assets/brand/staledocs-logo.png",
     "docs/assets/brand/staledocs-avatar-source.png",
     "docs/assets/brand/staledocs-avatar.png",
     "docs/assets/brand/README.md",

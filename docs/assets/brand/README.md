@@ -12,20 +12,17 @@ Every alignment and export must look meticulously crafted, repeatedly refined, a
 
 ## Usage rules
 
-- Palette: background `#0D1117`, surface `#161B22`, text `#F0F6FC`, secondary `#8B949E`, analysis `#58A6FF`, validated `#3FB950`, warning `#D29922`.
-- Alt text: `StaleDocs mark: a document page connected to four semantic nodes.`
-- Avatar alt text: `StaleDocs avatar: a numbered code document connected to a three-step repository graph.`
-- Clear space: reserve one node diameter, 8 viewBox units, around the 64-unit mark on every side.
-- Minimum size: use the mark at 32-pixel minimum when it is a standalone identifier.
-- Dark use: place `staledocs-mark-on-dark.svg` or `staledocs-mark-dark.png` on graphite surfaces such as `#0D1117` or `#161B22`.
-- Light use: place `staledocs-mark-on-light.svg` or `staledocs-mark-light.png` on a white surface when a light GitHub or document context needs stronger contrast.
-- Wordmark: retain `staledocs-wordmark.svg` as the compact scalable lockup for narrow integrations.
-- Repository avatar: use `staledocs-avatar.png` as the 512-pixel platform export. Preserve its square white canvas, graphite repository layer, numbered code page, StaleDocs label, and green current-state indicator without recropping.
-- Storefront imagery: the public README carries no image while the renamed StaleDocs artwork is being produced. The raster compositions below still show the former AiDoc wordmark and must be re-rendered before any of them is referenced again. Use the light composition only for the GitHub social preview, the clean dark poster source as the README hero, the poster export as the static evidence fallback, and the animation for the five-stage walkthrough. Preserve the graphite repository layer, cyan history rail, warm-white document sheets, and green validated endpoint as one connected physical story without repeating the same image in adjacent README slots.
-- Raster sources: `staledocs-social-preview-source.png`, `staledocs-flow-poster-source.png`, and `staledocs-flow-scene.png` are the maintainer-approved high-resolution sources. Their neighboring SVG compositions define accessible descriptions, exact copy contracts, safe output canvases, and deterministic overlays; every image reference must remain local to this repository. Track pixel-only PNG exports without provider branding metadata.
+- Palette: paper `#F7F4EE`, sheet `#FFFDF8`, graphite `#1E252E`, analysis cyan `#1BA8E8`, validated green `#2AC769`, warning amber `#E5A93A`.
+- Logo: `staledocs-logo.png` is the 1024-pixel transparent export of the avatar artwork. Use it wherever the mark sits on a page, header, or plugin listing; it works on light and dark backgrounds without a plate.
+- Logo alt text: `StaleDocs logo: a graphite code panel with a cyan rail beside a warm-white documentation sheet.`
+- Minimum size: use the logo at 32 pixels minimum and pair it with the `StaleDocs` wordmark set in system monospace, `Stale` in graphite and `Docs` in cyan.
+- Repository avatar: use `staledocs-avatar.png`, the 512-pixel opaque export of `staledocs-avatar-source.png`, for GitHub and other platforms that need a square avatar. Do not recrop it.
+- Plugin icon: `integrations/claude/staledocs/assets/icon.png` is the 512-pixel transparent export of `staledocs-logo.png`.
+- Storefront imagery: the README hero is `../demo/staledocs-flow-scene.png`, followed by `../review-comment.png`, a GitHub-styled render of real `staledocs review --format markdown` output. Use the light social composition only for the GitHub social preview. The dark poster is kept as a source asset and is not referenced from the README.
+- Raster sources: `staledocs-social-preview-source.png`, `staledocs-flow-poster-source.png`, and `staledocs-flow-scene.png` are the maintainer-approved high-resolution sources. Their neighboring SVG compositions define accessible descriptions, safe output canvases, and deterministic overlays; every image reference must remain local to this repository. Track pixel-only PNG exports without provider branding metadata.
 - Semantic color: cyan indicates AST analysis or navigation, green indicates a validated state, and amber indicates a warning only.
 - Accessibility: preserve the title and description in the SVG sources, provide the alt text above for rendered images, and do not rely on color alone to communicate state.
 - Original design: these assets are repository-owned original work and must not include a third-party logo, remote font, remote image, or borrowed brand shape.
-- Typography: use the system monospace stacks declared by the wordmark and keep text sparse, legible, and subordinate to the geometry.
+- Typography: use system monospace for the wordmark and keep text sparse, legible, and subordinate to the geometry.
 
-The source SVGs remain canonical for the scalable mark and wordmark. `staledocs-avatar-source.png` is the maintainer-selected 1254-pixel source for the repository avatar, and `staledocs-avatar.png` is its 512-pixel platform export. Re-export the avatar with `sips -s format png --resampleHeightWidth 512 512 docs/assets/brand/staledocs-avatar-source.png --out docs/assets/brand/staledocs-avatar.png`. Re-export storefront PNGs from their neighboring SVG compositions and tracked local raster sources. Do not patch PNG bytes or add decorative metrics, graphs without data, robots, people, wands, sparkles, or provider marks.
+`staledocs-avatar-source.png` is the maintainer-selected 1254-pixel source for the avatar and logo. Re-export the avatar with `sips -s format png --resampleHeightWidth 512 512 docs/assets/brand/staledocs-avatar-source.png --out docs/assets/brand/staledocs-avatar.png`. The transparent logo is the same artwork with the background removed; re-export the plugin icon from it at 512 pixels. Re-export storefront PNGs from their neighboring SVG compositions and tracked local raster sources. Do not patch PNG bytes or add decorative metrics, graphs without data, robots, people, wands, sparkles, or provider marks.
