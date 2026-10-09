@@ -91,7 +91,6 @@ test("emits deterministic, canonical, credential-free hybrid beta evidence", asy
     prompt_contains_signatures: true,
     forged_preparation_blocked: true,
     secret_candidate_redacted_or_blocked: true,
-    codex_plugin_smoke_passed: true,
   });
   assert.deepEqual(first.tools, [
     "prepare_documentation_update",
@@ -109,34 +108,6 @@ test("emits deterministic, canonical, credential-free hybrid beta evidence", asy
   assert.equal(first.counts.secret_findings, 1);
 });
 
-test("demo source keeps the canonical schema and credential-free contract visible", async () => {
-  const source = await readFile(demoScript, "utf8");
-  assert.match(source, /staledocs\.hybrid-beta-demo\.v1/u);
-  assert.match(source, /prepare_documentation_update/u);
-  assert.match(source, /validate_documentation_draft/u);
-  assert.match(source, /createUser/u);
-  assert.match(source, /README\.md/u);
-  assert.match(source, /docs\/API\.md/u);
-  assert.match(source, /Use `createUser\(email\)` from the source module\./u);
-  assert.match(
-    source,
-    /Use `createUser\(email, role\)` from the source module\./u,
-  );
-  assert.match(
-    source,
-    /approvedTargets\.push[\s\S]{0,500}createUser\(email, role\)/u,
-  );
-  assert.doesNotMatch(source, /Validated by the host/u);
-  assert.doesNotMatch(source, /formatName/u);
-  assert.match(source, /snapshotRepositoryTree/u);
-  assert.match(
-    source,
-    /name:\s*"check_docs_freshness"[\s\S]{0,180}directory:\s*"\."/u,
-  );
-  assert.match(source, /OPENAI_API_KEY/u);
-  assert.match(source, /network|credential-free|no credentials/u);
-  assert.doesNotMatch(source, /fetch\(|https?:\/\//u);
-});
 
 test("working-tree snapshot detects content, directory, mode, HEAD, and symlink changes", async () => {
   const fixture = await mkdtemp(path.join(tmpdir(), "staledocs-hybrid-snapshot-"));

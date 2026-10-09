@@ -21,7 +21,6 @@ npm run test              # Run all tests
 npm run test:watch        # Run in watch mode
 npm run test:coverage     # Run with coverage report
 npm run test:provider-contracts
-npm run test:codex-plugin
 npm run test:hybrid-beta
 ```
 
@@ -36,6 +35,17 @@ For public-beta preparation changes, also run:
 ```bash
 npm run test:public-beta
 ```
+
+For Claude Code plugin changes, use Claude Code >=2.1.281:
+
+```bash
+claude plugin validate --strict ./integrations/claude/staledocs
+claude plugin validate --strict .
+```
+
+Then load it from a separate consumer Git worktree with `--plugin-dir`,
+confirm `/mcp` connects, and exercise the changed skill. See the
+[Claude guide](./docs/integrations/claude.md) for scope and billing boundaries.
 
 Never include API keys, raw provider context, private paths, or personal
 contact details in issues, fixtures, logs, or pull requests.

@@ -19,6 +19,7 @@ jobs:
       - uses: mr-min-max/staledocs@v0.4.0-beta.1
         with:
           mode: review
+          fail-on: none
 ```
 
 ## What the comment contains
@@ -44,6 +45,22 @@ npm install -g staledocs@beta
 `staledocs check` exits with code 1 when a section mentioning a changed public symbol was not updated, and exits 0 otherwise.
 
 ## Fix the docs with your assistant
+
+### Claude Code plugin
+
+Start Claude Code in your Git worktree, then run:
+
+```text
+/plugin marketplace add mr-min-max/staledocs
+/plugin install staledocs@staledocs
+```
+
+Use `/staledocs:check` for drift signals, `/staledocs:review` for the PR report,
+or `/staledocs:maintain-documentation` for a validated draft. Requires Node.js
+>=22.12.0 and npm/npx. This repository hosts its own plugin marketplace;
+it is not an approved Anthropic directory listing.
+
+### Codex or manual MCP
 
 ```bash
 codex mcp add staledocs -- staledocs --mcp
@@ -78,4 +95,5 @@ StaleDocs `0.4.0-beta.1` is published. npm `latest`, npm `beta`, and the GitHub 
 - [Security](./SECURITY.md)
 - [Limitations](./docs/LIMITATIONS.md)
 - [Changelog](./CHANGELOG.md)
+- [GitHub Action Marketplace](https://github.com/marketplace/actions/staledocs-documentation-drift-check)
 - [Evaluations](./docs/EVALUATIONS.md)

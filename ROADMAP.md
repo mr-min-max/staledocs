@@ -2,7 +2,11 @@
 
 ## Now
 
-Roadmap 2 is complete: implementation, release, moving channels, live Codex validation, and the ten-target before/after evidence are delivered.
+StaleDocs `0.4.0-beta.1` is published with a ten-target before/after evaluation corpus.
+Claude Code plugin packaging and installation are being added alongside the
+existing Codex integration. Live model validation remains separate from local
+MCP smoke checks; signed-digest transcription is tracked in
+[issue #49](https://github.com/mr-min-max/staledocs/issues/49).
 
 ## Next
 
@@ -17,6 +21,5 @@ Candidates, not promises:
 
 - New languages until users ask.
 - VS Code extension.
-- Website.
 - Image generation.
 - README beautification.
