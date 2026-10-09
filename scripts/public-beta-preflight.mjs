@@ -23,7 +23,15 @@ const BETA_SOURCE_ARTIFACTS = Object.freeze({
     "integrations/codex/staledocs/.codex-plugin/plugin.json",
     "integrations/codex/staledocs/.mcp.json",
     "integrations/codex/staledocs/skills/maintain-documentation/SKILL.md",
-    "tests/e2e/codex-plugin-smoke.mjs",
+  ]),
+  claudePlugin: Object.freeze([
+    ".claude-plugin/marketplace.json",
+    "integrations/claude/staledocs/.claude-plugin/plugin.json",
+    "integrations/claude/staledocs/.mcp.json",
+    "integrations/claude/staledocs/skills/check/SKILL.md",
+    "integrations/claude/staledocs/skills/review/SKILL.md",
+    "integrations/claude/staledocs/skills/maintain-documentation/SKILL.md",
+    "integrations/claude/staledocs/assets/icon.png",
   ]),
   integrationDocumentation: Object.freeze([
     "README.md",
@@ -721,6 +729,12 @@ async function sourceArtifactChecks(repositoryRoot, candidateRef) {
       codexShapeValid = false;
     }
   }
+  const claudeFilesPresent = await sourceArtifactFilesPresent(
+    repositoryRoot,
+    candidateRef,
+    BETA_SOURCE_ARTIFACTS.claudePlugin,
+  );
+
 
   const docsPresent = await sourceArtifactFilesPresent(
     repositoryRoot,
@@ -778,6 +792,13 @@ async function sourceArtifactChecks(repositoryRoot, candidateRef) {
       codexFilesPresent && codexShapeValid
         ? "Codex plugin source artifacts are present and shaped."
         : "Codex plugin source artifacts are missing or invalid.",
+    ),
+    makeCheck(
+      "claude-plugin-source",
+      claudeFilesPresent ? "pass" : "fail",
+      claudeFilesPresent
+        ? "Claude Code plugin source artifacts are present."
+        : "Claude Code plugin source artifacts are missing.",
     ),
     makeCheck(
       "integration-documentation",

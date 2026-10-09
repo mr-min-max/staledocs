@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+- Add a repository-hosted Claude Code plugin marketplace with read-only
+  `/staledocs:check` and `/staledocs:review` skills and a permissioned
+  preparation, draft-validation, and approved-write workflow.
+- Pin the plugin's MCP launcher to the published `staledocs@0.4.0-beta.1`;
+  document Node.js requirements, repository scope, source-checkout npm
+  behavior, separate host billing, and the signed-digest relay limitation.
+- Refresh Claude installation instructions and the non-blocking Action example.
+- Include Claude plugin source artifacts in the public-beta integrity gate.
+- Remove plugin source-wording assertions and their demo/release wiring;
+  validate the Claude manifests with the official host validator instead.
+
 ## [0.4.0-beta.1] - 2026-09-12
 
 - Resolve the TypeScript and JavaScript public boundary from package entries and bounded static relative re-exports, with loud fallback when no entry is available.

@@ -1,0 +1,17 @@
+{
+  "name": "staledocs",
+  "owner": {
+    "name": "StaleDocs contributors",
+    "url": "https://github.com/mr-min-max/staledocs"
+  },
+  "description": "AST-backed documentation drift checks and safe documentation maintenance.",
+  "plugins": [
+    {
+      "name": "staledocs",
+      "source": "./integrations/claude/staledocs",
+      "description": "Check documentation drift, review public API changes, and validate documentation drafts.",
+      "category": "development",
+      "tags": ["documentation", "ast", "mcp"]
+    }
+  ]
+}

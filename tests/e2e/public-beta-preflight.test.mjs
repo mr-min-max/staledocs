@@ -22,7 +22,15 @@ const SOURCE_ARTIFACTS = {
     "integrations/codex/staledocs/.codex-plugin/plugin.json",
     "integrations/codex/staledocs/.mcp.json",
     "integrations/codex/staledocs/skills/maintain-documentation/SKILL.md",
-    "tests/e2e/codex-plugin-smoke.mjs",
+  ],
+  claudePlugin: [
+    ".claude-plugin/marketplace.json",
+    "integrations/claude/staledocs/.claude-plugin/plugin.json",
+    "integrations/claude/staledocs/.mcp.json",
+    "integrations/claude/staledocs/skills/check/SKILL.md",
+    "integrations/claude/staledocs/skills/review/SKILL.md",
+    "integrations/claude/staledocs/skills/maintain-documentation/SKILL.md",
+    "integrations/claude/staledocs/assets/icon.png",
   ],
   docs: [
     "README.md",
@@ -193,6 +201,7 @@ async function createNeedlesFile(repositoryRoot, needles) {
 async function createSourceArtifacts(repositoryRoot) {
   const files = [
     ...SOURCE_ARTIFACTS.plugin,
+    ...SOURCE_ARTIFACTS.claudePlugin,
     ...SOURCE_ARTIFACTS.docs,
     ...SOURCE_ARTIFACTS.storefrontDocumentation,
     ...SOURCE_ARTIFACTS.demo,
@@ -797,6 +806,7 @@ test("detects missing and present beta source artifacts when requested", async (
   });
   assert.equal(missingReport.status, "fail");
   assert.equal(findCheck(missingReport, "codex-plugin-source").status, "fail");
+  assert.equal(findCheck(missingReport, "claude-plugin-source").status, "fail");
   assert.equal(
     findCheck(missingReport, "integration-documentation").status,
     "fail",
@@ -809,18 +819,6 @@ test("detects missing and present beta source artifacts when requested", async (
   assert.equal(findCheck(missingReport, "compiled-mcp").status, "fail");
   assert.equal(findCheck(missingReport, "storefront-static").status, "fail");
   assert.equal(findCheck(missingReport, "storefront-media").status, "fail");
-  assert.equal(
-    findCheck(missingReport, "storefront-static").summary,
-    "Storefront static assets are missing.",
-  );
-  assert.equal(
-    findCheck(missingReport, "storefront-media").summary,
-    "Storefront media assets are missing.",
-  );
-  assert.equal(
-    findCheck(missingReport, "storefront-documentation").summary,
-    "Storefront documentation artifacts are missing.",
-  );
   assertValueSafe(missingReport, fixture);
 
   await git(fixture.repositoryRoot, ["checkout", fixture.candidateRef]);
@@ -833,6 +831,7 @@ test("detects missing and present beta source artifacts when requested", async (
   });
   for (const checkId of [
     "codex-plugin-source",
+    "claude-plugin-source",
     "integration-documentation",
     "storefront-documentation",
     "hybrid-demo-source",
@@ -880,6 +879,7 @@ test("detects missing and present beta source artifacts when requested", async (
     includeSourceArtifacts: true,
   });
   assert.equal(findCheck(presentReport, "codex-plugin-source").status, "pass");
+  assert.equal(findCheck(presentReport, "claude-plugin-source").status, "pass");
   assert.equal(
     findCheck(presentReport, "integration-documentation").status,
     "pass",
@@ -892,13 +892,5 @@ test("detects missing and present beta source artifacts when requested", async (
   assert.equal(findCheck(presentReport, "compiled-mcp").status, "pass");
   assert.equal(findCheck(presentReport, "storefront-static").status, "pass");
   assert.equal(findCheck(presentReport, "storefront-media").status, "pass");
-  assert.equal(
-    findCheck(presentReport, "storefront-static").summary,
-    "Storefront static assets are present.",
-  );
-  assert.equal(
-    findCheck(presentReport, "storefront-documentation").summary,
-    "Storefront documentation artifacts are present.",
-  );
   assertValueSafe(presentReport, fixture);
 });

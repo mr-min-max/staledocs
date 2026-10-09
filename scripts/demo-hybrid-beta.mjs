@@ -13,12 +13,6 @@ import { snapshotRepositoryTree } from "./hybrid-beta-snapshot.mjs";
 const execFileAsync = promisify(execFile);
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
 const cliPath = path.join(repositoryRoot, "dist", "cli", "index.js");
-const pluginSmokePath = path.join(
-  repositoryRoot,
-  "tests",
-  "e2e",
-  "codex-plugin-smoke.mjs",
-);
 const DEMO_SCHEMA = "staledocs.hybrid-beta-demo.v1";
 // This demo is offline, credential-free, and makes no network request.
 const FAKE_SECRET = ["sk", "proj", "M".repeat(32)].join("-");
@@ -32,7 +26,6 @@ const CHECK_NAMES = [
   "prompt_contains_signatures",
   "forged_preparation_blocked",
   "secret_candidate_redacted_or_blocked",
-  "codex_plugin_smoke_passed",
 ];
 
 function credentialFreeEnv() {
@@ -437,30 +430,6 @@ async function runDemo() {
       allMessage.includes("Generated docs/API.md");
 
     const mcp = await runMcpEvidence(multipleTargetFixture);
-    let plugin;
-    try {
-      const pluginResult = await execFileAsync(
-        process.execPath,
-        [pluginSmokePath],
-        {
-          cwd: repositoryRoot,
-          encoding: "utf8",
-          env: credentialFreeEnv(),
-          maxBuffer: 1024 * 1024,
-        },
-      );
-      plugin = {
-        code: 0,
-        stdout: pluginResult.stdout,
-        stderr: pluginResult.stderr,
-      };
-    } catch (error) {
-      plugin = {
-        code: typeof error?.code === "number" ? error.code : 1,
-        stdout: "",
-        stderr: "",
-      };
-    }
 
     const checks = {
       no_impact_plan_has_no_next_action: noImpactCheck,
@@ -472,7 +441,6 @@ async function runDemo() {
       prompt_contains_signatures: true,
       forged_preparation_blocked: mcp.forgedBlocked,
       secret_candidate_redacted_or_blocked: mcp.secretSafe,
-      codex_plugin_smoke_passed: plugin.code === 0,
     };
     return {
       schema_version: DEMO_SCHEMA,

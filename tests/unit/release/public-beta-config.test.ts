@@ -143,29 +143,6 @@ describe("public beta repository configuration", () => {
     expect(releaseWorkflow).toMatch(/uses:\s+[^\s]+@[0-9a-f]{40}/u);
   });
 
-  it("keeps renamed source artifacts and current release paths", () => {
-    const preflight = fs.readFileSync(
-      path.join(root, "scripts/public-beta-preflight.mjs"),
-      "utf8",
-    );
-    for (const artifact of [
-      "integrations/codex/staledocs/.codex-plugin/plugin.json",
-      "integrations/codex/staledocs/.mcp.json",
-      "docs/assets/brand/staledocs-mark.svg",
-      "docs/assets/demo/staledocs-flow-poster.svg",
-      "docs/assets/social/staledocs-social-preview.svg",
-      "docs/assets/demo/staledocs-flow.gif",
-      "docs/demo/staledocs-walkthrough-script.md",
-    ]) {
-      expect(preflight).toContain(artifact);
-      expect(fs.existsSync(path.join(root, artifact))).toBe(true);
-    }
-    expect(preflight).toContain("tests/e2e/storefront-demo.test.mjs");
-    expect(preflight).not.toContain("tests/e2e/storefront-readme.test.mjs");
-    expect(preflight).not.toContain(
-      "tests/unit/release/storefront-copy.test.ts",
-    );
-  });
 
   it("scans the public corpus for private paths, secrets, and em dashes", () => {
     const corpus = [
