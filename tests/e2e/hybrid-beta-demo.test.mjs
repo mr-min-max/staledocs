@@ -5,7 +5,6 @@ import {
   lstat,
   mkdir,
   mkdtemp,
-  readFile,
   rm,
   symlink,
   writeFile,
