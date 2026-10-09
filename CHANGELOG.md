@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Link the product website and GitHub Action setup from the README, and add a
+  GitHub Action Marketplace badge.
 - Replace the repository artwork with StaleDocs-branded renders, add a
   transparent `staledocs-logo.png` used for the Claude Code plugin icon, and
   retire the former four-node mark and wordmark files.
