@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "target": { "type": "string" },
+    "valid": { "type": "boolean" },
+    "markdown_warnings": { "type": "array", "items": { "type": "string" } },
+    "approved_markdown": { "type": ["string", "null"] }
+  },
+  "required": ["target", "valid", "markdown_warnings", "approved_markdown"],
+  "additionalProperties": false
+}
