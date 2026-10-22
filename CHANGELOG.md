@@ -32,6 +32,17 @@ All notable changes to this project are documented in this file.
   supported Node.js runtime floor.
 - Migrate Git history helpers to simple-git v4's named factory, preserving
   repository-root, commit, diff, changed-file, and tag operations.
+- Update `glob` from 11.1.0, which npm marks as deprecated for known
+  vulnerabilities, to 13.0.6. Reviewed the 12 and 13 changelog: it removes
+  only the CLI `--shell` option and moves the CLI to `glob-bin`, while the
+  `glob()` options the source scanner uses are unchanged; scanner file lists
+  matched on fixture and repository trees, and the supported Node.js floor is
+  unchanged.
+- Update `diff` from 8.0.4 to 9.0.0. Reviewed the 9.0 breaking changes: they
+  affect `parsePatch`, `formatPatch`, and `reversePatch`, which StaleDocs does
+  not call; `createTwoFilesPatch` and `diffLines` output matched across
+  empty, CRLF, no-final-newline, and Unicode inputs, and the supported
+  Node.js floor is unchanged.
 
 ## [0.4.0-beta.1] - 2026-09-12
 
