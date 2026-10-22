@@ -1,0 +1,8 @@
+{"type":"thread.started","thread_id":"00000000-0000-7000-8000-000000000003"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"mcp_tool_call","server":"staledocs","tool":"prepare_documentation_update","arguments":{},"result":null,"error":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"mcp_tool_call","server":"staledocs","tool":"prepare_documentation_update","arguments":{},"result":null,"error":{"message":"MCP tool call requires approval, but approval policy is never"},"status":"failed"}}
+{"type":"item.started","item":{"id":"item_1","type":"mcp_tool_call","server":"staledocs","tool":"prepare_documentation_update","arguments":{},"result":null,"error":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_1","type":"mcp_tool_call","server":"staledocs","tool":"prepare_documentation_update","arguments":{},"result":null,"error":{"message":"MCP tool call requires approval, but approval policy is never"},"status":"failed"}}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"{\"target\":\"\",\"valid\":false,\"markdown_warnings\":[\"prepare_documentation_update was blocked because the tool requires approval and the approval policy is never. No draft was generated or validated; the repository remains unchanged.\"],\"approved_markdown\":null}"}}
+{"type":"turn.completed","usage":{"input_tokens":68625,"cached_input_tokens":50816,"cache_write_input_tokens":0,"output_tokens":182,"reasoning_output_tokens":18}}

@@ -136,6 +136,41 @@ describe("Codex fix-path harness analysis", () => {
     });
   });
 
+  it("scores a recorded stream whose MCP calls the host blocked", () => {
+    const { events } = parseJsonLines(sample("approval-blocked"));
+
+    const result = deriveRunResult({
+      events,
+      finalMessage: null,
+      expected,
+      writes: [],
+    });
+
+    expect(result).toMatchObject({
+      first_validate_ok: false,
+      correct: false,
+      validate_calls: 0,
+      invalid_preparation_errors: 0,
+    });
+    expect(result.tool_calls).toEqual([
+      {
+        server: "staledocs",
+        tool: "prepare_documentation_update",
+        status: "failed",
+        arguments: {},
+        error: "MCP tool call requires approval, but approval policy is never",
+      },
+      {
+        server: "staledocs",
+        tool: "prepare_documentation_update",
+        status: "failed",
+        arguments: {},
+        error: "MCP tool call requires approval, but approval policy is never",
+      },
+    ]);
+    expect(firstModel(events)).toBeNull();
+  });
+
   it("reports no first-attempt success when validation never ran", () => {
     const result = deriveRunResult({
       events: [],
