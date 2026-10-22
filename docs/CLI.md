@@ -30,8 +30,9 @@ provider-free. The MCP workflow prepares and validates Markdown but never writes
 the repository; the host decides whether to apply the approved Markdown under
 its normal permission boundary.
 
-The MCP server exposes these tools. Each one returns its JSON result as text
-and as `structuredContent`, and declares an output schema.
+The MCP server exposes these tools. In the unreleased version on `main`, every
+tool also returns its JSON result as `structuredContent` and declares an output
+schema; in `0.4.0-beta.1` only the prepare and validate tools do.
 
 | Tool                           | Behavior                                                                                     |
 | ------------------------------ | -------------------------------------------------------------------------------------------- |
