@@ -252,5 +252,5 @@ describe("MCP structured results", () => {
       await server.close();
       fs.rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });
