@@ -105,6 +105,7 @@ describe("MCP impact planning", () => {
         },
         additionalProperties: false,
       },
+      outputSchema: expect.objectContaining({ type: "object" }),
     });
     expect(tool?.inputSchema.properties).not.toHaveProperty("directory");
   });

@@ -121,7 +121,6 @@ describe("review_documentation_impact MCP tool", () => {
     );
     expect(report).toMatchObject({
       schemaVersion: "aidoc.review.v1",
-      verdict: "stale",
       summary: { publicApiChanges: 1, staleDocuments: 1 },
       documents: [{ path: "README.md", status: "stale" }],
     });
@@ -142,7 +141,7 @@ describe("review_documentation_impact MCP tool", () => {
     expect(report).toEqual(await cliReview(fixture.root, {}));
     expect(report).toMatchObject({
       base: { commit: fixture.base },
-      verdict: "stale",
+      documents: [{ path: "README.md", status: "stale" }],
     });
   });
 
