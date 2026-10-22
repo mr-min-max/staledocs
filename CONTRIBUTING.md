@@ -2,6 +2,9 @@
 
 First off, thanks for taking the time to contribute! 🎉
 
+Agents and humans: the repository rules, commands, and definition of done live in
+[AGENTS.md](./AGENTS.md).
+
 ## Development Setup
 
 Use Node.js `>=22.12.0`.
