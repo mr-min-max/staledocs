@@ -1,0 +1,16 @@
+{
+  "name": "ts-method",
+  "description": "A documented class method gains an optional parameter; the README section still shows the old call.",
+  "base": {
+    "package.json": "{\"name\":\"client\",\"main\":\"src/index.ts\"}\n",
+    "src/index.ts": "export class Client {\n  fetch(url: string): Promise<string> {\n    return Promise.resolve(url);\n  }\n}\n",
+    "README.md": "# Client\n\n## Fetching\n\nCall `Client.fetch` with a URL.\n"
+  },
+  "head": {
+    "src/index.ts": "export class Client {\n  fetch(url: string, init?: RequestInit): Promise<string> {\n    return Promise.resolve(url);\n  }\n}\n"
+  },
+  "expect": {
+    "staleDocument": "README.md",
+    "contains": "init"
+  }
+}

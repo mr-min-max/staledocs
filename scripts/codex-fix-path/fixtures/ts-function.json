@@ -1,0 +1,16 @@
+{
+  "name": "ts-function",
+  "description": "A documented function gains a required parameter; the README usage section still shows the old call.",
+  "base": {
+    "package.json": "{\"name\":\"lib\",\"main\":\"src/index.ts\"}\n",
+    "src/index.ts": "export function greet(name: string): string {\n  return \"Hello \" + name;\n}\n",
+    "README.md": "# Lib\n\n## Usage\n\nCall `greet` with a name.\n"
+  },
+  "head": {
+    "src/index.ts": "export function greet(name: string, loud: boolean): string {\n  return \"Hello \" + name;\n}\n"
+  },
+  "expect": {
+    "staleDocument": "README.md",
+    "contains": "loud"
+  }
+}
