@@ -181,7 +181,10 @@ describe("Codex fix-path harness analysis", () => {
     const rows = summarizeRuns([
       run("ts-method", 40),
       run("ts-function", 90),
-      run("ts-function", 30, { first_validate_ok: false, digest_relayed: true }),
+      run("ts-function", 30, {
+        first_validate_ok: false,
+        digest_relayed: true,
+      }),
       run("ts-function", 60, { correct: false, writes: [" M README.md"] }),
       run("ts-method", 51),
     ]);

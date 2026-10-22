@@ -1,5 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { executeReviewCommand } from "../../../src/cli/commands/review";
@@ -167,7 +173,9 @@ describe("review_documentation_impact MCP tool", () => {
 
   it("never writes files, loads providers, or honors a directory argument", async () => {
     const fixture = reviewRepository();
-    const outside = mkdtempSync(join(tmpdir(), "staledocs-mcp-review-outside-"));
+    const outside = mkdtempSync(
+      join(tmpdir(), "staledocs-mcp-review-outside-"),
+    );
     roots.push(fixture.root, outside);
     const readme = readFileSync(join(fixture.root, "README.md"));
     const status = git(fixture.root, "status", "--porcelain");

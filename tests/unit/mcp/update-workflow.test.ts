@@ -102,7 +102,11 @@ describe("preparation store", () => {
     const store = new PreparationStore();
     store.record("README.md", syntheticClaims("README.md"), "first");
     for (let index = 1; index < PREPARATION_STORE_CAPACITY; index += 1) {
-      store.record(`docs/${index}.md`, syntheticClaims(`docs/${index}.md`), "x");
+      store.record(
+        `docs/${index}.md`,
+        syntheticClaims(`docs/${index}.md`),
+        "x",
+      );
     }
     store.record("README.md", syntheticClaims("README.md"), "second");
     store.record("docs/new.md", syntheticClaims("docs/new.md"), "x");
