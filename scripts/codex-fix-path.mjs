@@ -21,6 +21,10 @@
  * cannot fall back to API billing. `--ignore-user-config` keeps the user's
  * config.toml out; the StaleDocs server is configured only through `-c`
  * overrides, whose values are TOML (the `args` override is a TOML array).
+ * `codex exec` runs with approval policy `never`, which rejects MCP calls that
+ * need approval, so the overrides approve exactly the two workflow tools,
+ * `prepare_documentation_update` and `validate_documentation_draft`; neither
+ * writes files, and every other StaleDocs tool keeps the default policy.
  * It does not run under `npm test` or in CI.
  *
  * Bounds: `--runs` is 1 to 10 per fixture; each run times out after 10
@@ -60,6 +64,10 @@ const MAX_CAPTURE_BYTES = 4 * 1024 * 1024;
 const COMMAND_TIMEOUT_MS = 120_000;
 const STDERR_TAIL_BYTES = 4096;
 const FIXED_GIT_DATE = "2026-01-01T00:00:00Z";
+const APPROVED_TOOLS = [
+  "prepare_documentation_update",
+  "validate_documentation_draft",
+];
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const harnessDirectory = join(repositoryRoot, "scripts", "codex-fix-path");
@@ -242,6 +250,10 @@ function codexArguments(options, repository, finalMessagePath) {
     `mcp_servers.staledocs.args=[${tomlString(cliPath)},"--mcp"]`,
     "-c",
     "mcp_servers.staledocs.required=true",
+    ...APPROVED_TOOLS.flatMap((tool) => [
+      "-c",
+      `mcp_servers.staledocs.tools.${tool}.approval_mode="approve"`,
+    ]),
     ...(options.model === undefined
       ? []
       : ["-c", `model=${tomlString(options.model)}`]),
