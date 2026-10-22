@@ -30,6 +30,25 @@ provider-free. The MCP workflow prepares and validates Markdown but never writes
 the repository; the host decides whether to apply the approved Markdown under
 its normal permission boundary.
 
+The MCP server exposes these tools. Each one returns its JSON result as text
+and as `structuredContent`, and declares an output schema.
+
+| Tool                           | Behavior                                                                                     |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| `analyze_codebase`             | Return the AST summary of functions, classes, and types for a directory.                     |
+| `generate_readme`              | Generate a README with the configured direct provider.                                       |
+| `generate_api_docs`            | Generate API reference Markdown with the configured direct provider.                         |
+| `generate_diagram`             | Generate a Mermaid architecture diagram with the configured direct provider.                 |
+| `check_docs_freshness`         | Report sections of one document that mention changed public symbols.                         |
+| `plan_documentation_impact`    | Return the `aidoc.impact-plan.v1` plan for a base and head.                                  |
+| `review_documentation_impact`  | Return the `aidoc.review.v1` report that `staledocs review --format json` prints.            |
+| `prepare_documentation_update` | Prepare one bounded Markdown update without writing files or calling a provider.             |
+| `validate_documentation_draft` | Validate a host draft against the latest preparation for its `target` without writing files. |
+
+`validate_documentation_draft` requires only `target` and
+`candidate_markdown`. `preparation_digest` is optional; when a host passes it,
+it must be the exact value returned by `prepare_documentation_update`.
+
 All document writes use the repository-contained safety checks described in the
 [Public Beta guide](./PUBLIC_BETA.md). A dry run previews output without
 writing. `--yes` applies a generated diff without the normal interactive
