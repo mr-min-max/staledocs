@@ -1,123 +1,93 @@
-# StaleDocs with local Codex
+# StaleDocs with Codex
 
-This guide covers the published `0.4.0-beta.1` StaleDocs CLI with the official local Codex host and StaleDocs's provider-free MCP tools. It is not a ChatGPT web integration or a marketplace installation guide.
+This guide covers the Codex plugin and manual local MCP setup for the published
+`0.4.0-beta.1` StaleDocs CLI. It works in the Codex CLI, the IDE extension, and the
+desktop app. It is not a ChatGPT web integration: ChatGPT web does not read local
+Codex configuration or local stdio MCP servers.
 
-For the complete command catalogue and beta boundaries, see [CLI.md](../CLI.md)
-and [Public Beta](../PUBLIC_BETA.md). The [GitHub Action reference](../GITHUB_ACTION.md)
-covers the separate CI generate and check path.
+Codex signs in with your ChatGPT account; that authorizes the host's model access.
+StaleDocs receives no ChatGPT OAuth token and needs no API key for drift analysis,
+preparation, or draft validation.
 
-## What is authenticated
+## Install
 
-Sign in to the official local Codex client using its supported ChatGPT
-authentication flow. A ChatGPT Plus/Pro subscription authorizes the host's
-model access; it is not an OpenAI API key and it is not a general StaleDocs API
-credential. StaleDocs receives no ChatGPT OAuth token. ChatGPT web does not read
-local Codex configuration or local STDIO MCP servers.
-
-Consumer subscription access and OpenAI API billing are separate products. If
-you choose direct StaleDocs provider mode instead, configure `openai` with
-`OPENAI_API_KEY` and pay the OpenAI API account separately.
-
-Official references: [Codex authentication](https://developers.openai.com/codex/auth)
-and [Codex MCP](https://developers.openai.com/codex/mcp).
-
-## Setup
-
-Install the published prerelease:
+Requires Node.js **>=22.12.0**, npm/npx on `PATH`, a Git worktree, and a signed-in
+Codex. Add the repository marketplace and install the plugin:
 
 ```bash
-npm install -g staledocs@beta
-staledocs --version
+codex plugin marketplace add mr-min-max/staledocs
+codex plugin add staledocs@staledocs
 ```
 
-For development from an StaleDocs checkout:
+Start a new Codex session in the repository you want to check. `codex plugin list`
+shows `staledocs@staledocs` as `installed, enabled`, and `/mcp` in Codex shows the
+`staledocs` server. Remove it with `codex plugin remove staledocs@staledocs`.
+
+The plugin launches `npx --yes staledocs@0.4.0-beta.1 --mcp`. The first launch
+downloads the npm package; later launches use npm's cache.
+
+Without the plugin, add only the MCP server:
 
 ```bash
-npm install
-npm run build
-npm link
-staledocs --version
-```
-
-The repository-owned plugin root is `integrations/codex/staledocs`. Its local MCP
-configuration invokes exactly `staledocs --mcp`. This release does not create a
-marketplace entry or install a plugin into a personal marketplace. Use the
-host's local plugin-development workflow to load the repository-owned source
-integration when testing it.
-
-For a copyable MCP setup after the npm install or `npm link`:
-
-```bash
-codex mcp add staledocs -- staledocs --mcp
+codex mcp add staledocs -- npx --yes staledocs@0.4.0-beta.1 --mcp
 codex mcp list
 ```
 
-You can verify the connection with `/mcp` in Codex. Remove it with
-`codex mcp remove staledocs`. Marketplace installation/distribution is a later
-step; no marketplace entry is created here.
+Remove it with `codex mcp remove staledocs`. Do not add this entry if the plugin
+already provides the server.
 
-To reverse the global source-checkout link:
+## What you get
 
-```bash
-npm unlink -g staledocs
-```
+Skills, mentioned in Codex with `$` or chosen from `/skills`:
 
-## Pinned MCP repository scope
+- `staledocs:check`: report stale, missing, and unknown documentation evidence for
+  the current worktree. Read-only.
+- `staledocs:review`: summarize the deterministic review of public API changes and
+  affected documentation. Read-only.
+- `staledocs:maintain-documentation`: prepare a bounded update, validate the draft
+  Codex writes, and ask permission before applying only the approved Markdown.
 
-Each `staledocs --mcp` server is pinned to the canonical Git worktree containing
-its startup cwd. One server serves one startup worktree; start another server
-from another repository when you change repositories. The root and real
-subdirectories are allowed, and both absolute in-worktree paths and
-repository-relative directory paths work.
+MCP tools the skills use:
 
-External paths, parent traversal, `.git` or other Git metadata, missing or
-non-directory paths, and every symlink or junction fail closed before project
-reads. Successful MCP paths are repository-relative POSIX paths.
+- `check_docs_freshness`: stale sections that mention changed public symbols.
+- `plan_documentation_impact`: affected documentation targets for a base and head.
+- `prepare_documentation_update`: bounded context and prompts for one target.
+- `validate_documentation_draft`: validate a candidate without writing files.
 
-MCP reads only bounded declarative JSON/YAML/no-extension configuration,
-`package.json#staledocs`, and the pinned-root `.env` allowlist. It rejects
-malformed or symlinked selected configuration, executable JavaScript,
-TypeScript, CJS, or MJS configuration, and the legacy `apiKey` project field.
-Direct CLI cosmiconfig and dotenv behavior is unchanged. This is a repository
-path/read boundary, not an operating-system sandbox: privileged same-host
-races and hard-link identity are outside this API-level guarantee, and network
-access remains controlled by the provider transport and Trust Gate.
+## Safe update workflow
 
-## Safe documentation workflow
-
-When the user asks to update documentation, the bundled skill requires this
-sequence:
-
-1. Call `prepare_documentation_update`.
-2. Ask the user to choose when multiple safe relative targets are returned;
-   never guess.
-3. Generate one complete Markdown candidate using only
-   `generation.system_prompt` and `generation.prompt`.
-4. Call `validate_documentation_draft` with the unchanged
-   `preparation_digest`, selected relative `target`, and exact
-   `candidate_markdown`.
-5. Stop or reprepare if validation is invalid, stale, blocked, or asks for a
-   fresh preparation.
-6. Show the approved diff metadata, request Codex's normal write permission,
-   apply only `approved_markdown` to the exact approved target, and call
-   `check_docs_freshness` afterward.
-
-The preparation/validation path is provider-free and does not write the
-repository. It uses the host's model for the bounded candidate, not a legacy
-provider-backed MCP generation call and not a subscription-to-API bridge.
+1. `prepare_documentation_update` returns one target and the bounded prompts. When
+   several targets are returned, you choose; Codex does not guess.
+2. Codex generates one complete Markdown candidate from only those prompts.
+3. `validate_documentation_draft` receives the target, the exact candidate, and the
+   preparation value passed as structured arguments from the previous result.
+4. Codex stops or prepares again if validation is invalid, stale, or blocked.
+5. When valid, Codex shows the approved diff and asks for its normal write
+   permission, then applies only `approved_markdown` to that target.
+6. `check_docs_freshness` runs afterward on the target.
 
 A live fix-path check on 2026-09-12 with Codex CLI 0.149.0-alpha.4.1 produced a correct README candidate for a changed public TypeScript API. The first validation using the exact signed output of its preparation accepted that candidate with no warnings, and no repository file was written without permission. Two preliminary manual-transcription attempts failed closed and are tracked in issue #49.
 
-## Trust boundary
+## Repository scope and troubleshooting
 
-StaleDocs Trust Gate inspects StaleDocs's prepared input and validated output for
-secret findings. Configured `strict` blocks findings; configured `warn` or
-`redact` redacts detected sensitive values before host generation or return.
-An `allowed` result means no findings were detected. Trust Gate does not
-control Codex's context window, model, sandbox, isolation, or permission
-system. Keep Codex's official permissions in force; do not read, create,
-paste, or forward an API key or OAuth token for this host-managed path.
+Each server is pinned to the Git worktree that contains the directory where Codex
+started it. Start Codex in the repository you want to check; a running server does
+not follow later directory changes. See the
+[repository scope rules](./claude.md#pinned-mcp-repository-scope).
 
-For direct provider mode, the supported profiles are `openai`, `anthropic`,
-`deepseek`, `qwen`, `openai-compatible`, and `ollama`; see [Public Beta](../PUBLIC_BETA.md)
-for exact credentials and billing boundaries.
+- `outside the MCP repository scope`: Codex was started outside a Git worktree.
+- `EACCES` from npm when the server starts: Codex launches `npx` without your shell's
+  npm settings, so the default npm cache must be writable by your user.
+
+## Boundaries
+
+Trust Gate inspects StaleDocs's prepared input and validated output for secret
+findings; it does not control Codex's context window, model, sandbox, or permission
+system, so keep Codex's permissions in force. Beta limits are in
+[Public Beta](../PUBLIC_BETA.md) and [Limitations](../LIMITATIONS.md); the full command
+catalogue is in [CLI.md](../CLI.md). The repository marketplace is the distribution
+path because OpenAI's plugin directory accepts remote HTTPS MCP servers only, and
+StaleDocs runs locally over stdio.
+
+Official references: [Codex authentication](https://developers.openai.com/codex/auth)
+and [Codex MCP](https://developers.openai.com/codex/mcp).

@@ -16,6 +16,8 @@
     "developerName": "staledocs contributors",
     "category": "Developer Tools",
     "capabilities": ["Read", "Write"],
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png",
     "defaultPrompt": [
       "Update the documentation affected by my code changes.",
       "Plan documentation impact without an API key.",

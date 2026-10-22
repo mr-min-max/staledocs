@@ -68,7 +68,21 @@ or `/staledocs:maintain-documentation` for a validated draft. Requires Node.js
 >=22.12.0 and npm/npx. This repository hosts its own plugin marketplace;
 it is not an approved Anthropic directory listing.
 
-### Codex or manual MCP
+### Codex plugin
+
+Start Codex in your Git worktree, then run:
+
+```bash
+codex plugin marketplace add mr-min-max/staledocs
+codex plugin add staledocs@staledocs
+```
+
+In a new session, type `$` and pick `staledocs:check`, `staledocs:review`, or
+`staledocs:maintain-documentation` (or open `/skills`). Requires Node.js
+>=22.12.0 and npm/npx. This repository hosts its own plugin marketplace; it is not a listing in
+OpenAI's plugin directory.
+
+### Manual MCP
 
 ```bash
 codex mcp add staledocs -- staledocs --mcp
