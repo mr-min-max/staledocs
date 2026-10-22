@@ -151,7 +151,9 @@ Use the provider-free MCP boundary in this order:
 3. Generate one Markdown candidate from only the returned
    `generation.system_prompt` and `generation.prompt`.
 4. Call `validate_documentation_draft` with the selected relative `target`
-   and the exact `candidate_markdown`. Do not copy `preparation_digest`.
+   and the exact `candidate_markdown`. Add the exact `preparation_digest` from
+   preparation only when the tool's input schema marks it as required
+   (0.4.0-beta.1). Do not copy it into text or retype it.
 5. Stop or reprepare on invalid, stale, blocked, or reprepare-required output.
 6. Show the approved diff metadata, request Claude's normal permission, apply
    only `approved_markdown` to the exact target, and call
@@ -164,11 +166,12 @@ no findings were detected. Trust Gate does not control Claude's context
 window, model, sandbox, isolation, or permission system. StaleDocs does not read
 Claude authentication files or receive a Claude subscription token.
 
-Validation uses the server's latest preparation for the target, so the host
-does not relay the signed digest ([issue #49](https://github.com/mr-min-max/staledocs/issues/49)
-recorded a live Codex attempt that transcribed it incorrectly). A supplied
-digest must still be the exact value from preparation; an altered one is
-rejected. Reprepare if needed, never bypass validation.
+In the unreleased version on `main`, validation uses the server's latest
+preparation for the target, so the host does not relay the signed digest
+([issue #49](https://github.com/mr-min-max/staledocs/issues/49) recorded a live
+Codex attempt that transcribed it incorrectly). 0.4.0-beta.1 still requires
+the digest. A supplied digest must be the exact value from preparation; an
+altered one is rejected. Reprepare if needed, never bypass validation.
 
 Direct provider mode supports `openai`, `anthropic`, `deepseek`, `qwen`,
 `openai-compatible`, and `ollama` separately; it never silently falls back.
