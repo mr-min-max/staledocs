@@ -19,9 +19,13 @@ const DEPENDABOT_AUTOMATION_EMAIL =
   "49699333+dependabot[bot]@users.noreply.github.com";
 const SOURCE_ARTIFACTS = {
   plugin: [
+    ".agents/plugins/marketplace.json",
     "integrations/codex/staledocs/.codex-plugin/plugin.json",
     "integrations/codex/staledocs/.mcp.json",
+    "integrations/codex/staledocs/skills/check/SKILL.md",
+    "integrations/codex/staledocs/skills/review/SKILL.md",
     "integrations/codex/staledocs/skills/maintain-documentation/SKILL.md",
+    "integrations/codex/staledocs/assets/icon.png",
   ],
   claudePlugin: [
     ".claude-plugin/marketplace.json",
@@ -888,4 +892,52 @@ test("detects missing and present beta source artifacts when requested", async (
   assert.equal(findCheck(presentReport, "storefront-static").status, "pass");
   assert.equal(findCheck(presentReport, "storefront-media").status, "pass");
   assertValueSafe(presentReport, fixture);
+});
+
+test("fails the Codex plugin check when its pinned server or skills drift", async (t) => {
+  const fixture = await createFixture(t);
+  await git(fixture.repositoryRoot, ["checkout", fixture.candidateRef]);
+  const sourceArtifactPaths = await createSourceArtifacts(
+    fixture.repositoryRoot,
+  );
+  await git(fixture.repositoryRoot, ["add", "--", ...sourceArtifactPaths]);
+  await git(fixture.repositoryRoot, ["commit", "-m", "add beta source artifacts"]);
+  const baseline = await runPreflight({
+    ...fixture,
+    includeSourceArtifacts: true,
+  });
+  assert.equal(findCheck(baseline, "codex-plugin-source").status, "pass");
+
+  const mcpPath = "integrations/codex/staledocs/.mcp.json";
+  const skillPath = "integrations/codex/staledocs/skills/review/SKILL.md";
+  const originalMcp = await readFile(path.join(fixture.repositoryRoot, mcpPath), "utf8");
+  const originalSkill = await readFile(path.join(fixture.repositoryRoot, skillPath), "utf8");
+  const drifts = [
+    {
+      relativePath: mcpPath,
+      contents: originalMcp.replace(/staledocs@[^"]+/u, "staledocs@0.0.1"),
+    },
+    {
+      relativePath: mcpPath,
+      contents: originalMcp.replace('"command": "npx"', '"command": "staledocs"'),
+    },
+    {
+      relativePath: skillPath,
+      contents: originalSkill.replace(/^name: .*$/mu, "name: other"),
+    },
+  ];
+  for (const { relativePath, contents } of drifts) {
+    const original = relativePath === mcpPath ? originalMcp : originalSkill;
+    assert.notEqual(contents, original, "the drift must change the file");
+    await writeFile(path.join(fixture.repositoryRoot, relativePath), contents, "utf8");
+    await git(fixture.repositoryRoot, ["commit", "-am", "drift"]);
+    const report = await runPreflight({
+      ...fixture,
+      includeSourceArtifacts: true,
+    });
+    assert.equal(findCheck(report, "codex-plugin-source").status, "fail");
+    assert.equal(findCheck(report, "claude-plugin-source").status, "pass");
+    await writeFile(path.join(fixture.repositoryRoot, relativePath), original, "utf8");
+    await git(fixture.repositoryRoot, ["commit", "-am", "restore"]);
+  }
 });

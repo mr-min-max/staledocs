@@ -413,7 +413,7 @@ repository write safety applies.
   billing, Qwen PAYG, Ollama discovery, Trust Gate, and MCP scope.
 - [GitHub Action reference](./GITHUB_ACTION.md) covers the composite Action's
   inputs, outputs, modes, and auto-commit boundary.
-- [Codex local MCP setup](./integrations/codex.md) and [Claude local MCP setup](./integrations/claude.md)
+- [Codex plugin and MCP setup](./integrations/codex.md) and [Claude local MCP setup](./integrations/claude.md)
   cover host-managed preparation and validation.
 - [Security policy](../SECURITY.md) is the private reporting path for security
   issues.

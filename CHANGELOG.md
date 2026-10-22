@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Add a Codex plugin marketplace (`.agents/plugins/marketplace.json`) so
+  `codex plugin marketplace add mr-min-max/staledocs` and
+  `codex plugin add staledocs@staledocs` install three skills, `check`,
+  `review`, and `maintain-documentation`, plus a StaleDocs MCP server pinned to
+  the published `staledocs@0.4.0-beta.1`; the plugin keeps the Codex compatibility
+  layout because the portable `mcp.json` layout starts the server in the plugin
+  cache directory, outside any Git worktree.
+- Rewrite the Codex guide as an install-and-use page and extend the public-beta
+  integrity gate to the Codex marketplace, skills, icon, and version pin.
 - Link the product website and GitHub Action setup from the README, and add a
   GitHub Action Marketplace badge.
 - Replace the repository artwork with StaleDocs-branded renders, add a

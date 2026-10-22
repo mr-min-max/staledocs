@@ -20,9 +20,13 @@ const CURRENT_PACKAGE_VERSION = JSON.parse(
 ).version;
 const BETA_SOURCE_ARTIFACTS = Object.freeze({
   codexPlugin: Object.freeze([
+    ".agents/plugins/marketplace.json",
     "integrations/codex/staledocs/.codex-plugin/plugin.json",
     "integrations/codex/staledocs/.mcp.json",
+    "integrations/codex/staledocs/skills/check/SKILL.md",
+    "integrations/codex/staledocs/skills/review/SKILL.md",
     "integrations/codex/staledocs/skills/maintain-documentation/SKILL.md",
+    "integrations/codex/staledocs/assets/icon.png",
   ]),
   claudePlugin: Object.freeze([
     ".claude-plugin/marketplace.json",
@@ -665,6 +669,25 @@ async function sourceArtifactFilesPresent(
   );
 }
 
+function hasSkillFrontMatter(source, expectedName) {
+  const lines = source.split("\n");
+  if (lines[0] !== "---") {
+    return false;
+  }
+  const closing = lines.indexOf("---", 1);
+  if (closing < 0) {
+    return false;
+  }
+  const fields = new Map();
+  for (const line of lines.slice(1, closing)) {
+    const separator = line.indexOf(": ");
+    if (separator > 0) {
+      fields.set(line.slice(0, separator), line.slice(separator + 2).trim());
+    }
+  }
+  return fields.get("name") === expectedName && Boolean(fields.get("description"));
+}
+
 async function sourceArtifactChecks(repositoryRoot, candidateRef) {
   const codexFilesPresent = await sourceArtifactFilesPresent(
     repositoryRoot,
@@ -674,29 +697,48 @@ async function sourceArtifactChecks(repositoryRoot, candidateRef) {
   let codexShapeValid = false;
   if (codexFilesPresent) {
     try {
+      const codexPluginRoot = "integrations/codex/staledocs";
       const manifest = JSON.parse(
         await readFile(
           path.resolve(
             repositoryRoot,
-            "integrations/codex/staledocs/.codex-plugin/plugin.json",
+            codexPluginRoot,
+            ".codex-plugin/plugin.json",
           ),
           "utf8",
         ),
       );
       const mcp = JSON.parse(
         await readFile(
-          path.resolve(repositoryRoot, "integrations/codex/staledocs/.mcp.json"),
+          path.resolve(repositoryRoot, codexPluginRoot, ".mcp.json"),
           "utf8",
         ),
       );
-      const skill = await readFile(
-        path.resolve(
-          repositoryRoot,
-          "integrations/codex/staledocs/skills/maintain-documentation/SKILL.md",
+      const marketplace = JSON.parse(
+        await readFile(
+          path.resolve(repositoryRoot, ".agents/plugins/marketplace.json"),
+          "utf8",
         ),
-        "utf8",
       );
       const mcpServer = mcp?.mcpServers?.staledocs;
+      const marketplaceEntry = marketplace?.plugins?.[0];
+      const skillNames = ["check", "review", "maintain-documentation"];
+      const skills = new Map();
+      for (const skillName of skillNames) {
+        skills.set(
+          skillName,
+          await readFile(
+            path.resolve(
+              repositoryRoot,
+              codexPluginRoot,
+              "skills",
+              skillName,
+              "SKILL.md",
+            ),
+            "utf8",
+          ),
+        );
+      }
       const skillOrder = [
         "prepare_documentation_update",
         "generation.system_prompt",
@@ -705,6 +747,7 @@ async function sourceArtifactChecks(repositoryRoot, candidateRef) {
         "approved_markdown",
         "check_docs_freshness",
       ];
+      const maintenanceSkill = skills.get("maintain-documentation");
       codexShapeValid =
         manifest?.name === "staledocs" &&
         manifest?.version === CURRENT_PACKAGE_VERSION &&
@@ -714,10 +757,21 @@ async function sourceArtifactChecks(repositoryRoot, candidateRef) {
         JSON.stringify(Object.keys(mcp.mcpServers ?? {})) ===
           JSON.stringify(["staledocs"]) &&
         JSON.stringify(mcpServer) ===
-          JSON.stringify({ command: "staledocs", args: ["--mcp"] }) &&
+          JSON.stringify({
+            command: "npx",
+            args: ["--yes", `staledocs@${CURRENT_PACKAGE_VERSION}`, "--mcp"],
+          }) &&
+        marketplace?.plugins?.length === 1 &&
+        marketplaceEntry?.name === manifest.name &&
+        marketplaceEntry?.source?.source === "local" &&
+        marketplaceEntry?.source?.path === `./${codexPluginRoot}` &&
+        skillNames.every((skillName) =>
+          hasSkillFrontMatter(skills.get(skillName), skillName),
+        ) &&
         skillOrder.every((term, index, terms) => {
-          const current = skill.indexOf(term);
-          const previous = index === 0 ? -1 : skill.indexOf(terms[index - 1]);
+          const current = maintenanceSkill.indexOf(term);
+          const previous =
+            index === 0 ? -1 : maintenanceSkill.indexOf(terms[index - 1]);
           return current > previous;
         });
     } catch {

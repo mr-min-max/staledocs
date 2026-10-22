@@ -1,0 +1,12 @@
+{
+  "name": "staledocs",
+  "interface": { "displayName": "StaleDocs" },
+  "plugins": [
+    {
+      "name": "staledocs",
+      "source": { "source": "local", "path": "./integrations/codex/staledocs" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Developer Tools"
+    }
+  ]
+}
