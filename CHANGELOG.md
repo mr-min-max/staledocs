@@ -43,6 +43,10 @@ All notable changes to this project are documented in this file.
   not call; `createTwoFilesPatch` and `diffLines` output matched across
   empty, CRLF, no-final-newline, and Unicode inputs, and the supported
   Node.js floor is unchanged.
+- Rewrite `AGENTS.md` for the StaleDocs repository: code layout, the build,
+  test, lint, and `verify:release` commands, the rules every agent follows,
+  where documentation lives, and the definition of done. `CONTRIBUTING.md`
+  now links to it.
 
 ## [0.4.0-beta.1] - 2026-09-12
 
