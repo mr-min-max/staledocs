@@ -538,7 +538,7 @@ export const TOOLS: Tool[] = [
   {
     name: "validate_documentation_draft",
     description:
-      "Validate a host-generated Markdown draft against a signed repository-scoped preparation without writing files.",
+      "Validate a host-generated Markdown draft against the latest server-side preparation for the target, without writing files. preparation_digest is optional and, when present, must be the exact value returned by prepare_documentation_update.",
     inputSchema: {
       type: "object",
       properties: {
@@ -546,7 +546,7 @@ export const TOOLS: Tool[] = [
         target: { type: "string" },
         candidate_markdown: { type: "string" },
       },
-      required: ["preparation_digest", "target", "candidate_markdown"],
+      required: ["target", "candidate_markdown"],
       additionalProperties: false,
     },
     outputSchema: {

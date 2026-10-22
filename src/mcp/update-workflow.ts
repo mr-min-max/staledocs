@@ -50,10 +50,41 @@ export const MCP_TARGET_REQUIRED = "MCP_TARGET_REQUIRED" as const;
 const PREPARE_SCHEMA_VERSION = "aidoc.mcp-update-preparation.v1" as const;
 const VALIDATION_SCHEMA_VERSION = "aidoc.mcp-draft-validation.v1" as const;
 const MAX_CANDIDATE_BYTES = 4 * 1024 * 1024;
+export const PREPARATION_STORE_CAPACITY = 32;
+
+export interface PreparationRecord {
+  readonly claims: PreparationClaims;
+  readonly token: string;
+  readonly issuedAt: number;
+}
+
+/** Holds the newest preparation per normalized target, evicting the oldest past capacity. */
+export class PreparationStore {
+  readonly #records = new Map<string, PreparationRecord>();
+
+  record(target: string, claims: PreparationClaims, token: string): void {
+    this.#records.delete(target);
+    this.#records.set(target, { claims, token, issuedAt: Date.now() });
+    while (this.#records.size > PREPARATION_STORE_CAPACITY) {
+      const oldest = this.#records.keys().next();
+      if (oldest.done === true) break;
+      this.#records.delete(oldest.value);
+    }
+  }
+
+  latest(target: string): PreparationRecord | undefined {
+    return this.#records.get(target);
+  }
+
+  clear(): void {
+    this.#records.clear();
+  }
+}
 
 export interface MCPUpdateWorkflowContext {
   readonly serverCwd: string;
   readonly tokenCodec: PreparationTokenCodec;
+  readonly preparations: PreparationStore;
   readonly trustPolicy: TrustPolicy;
   readonly loadPlanningConfig: () => Promise<Readonly<PlanningConfig>>;
   readonly loadSuppressions?: () => Promise<SuppressionConfig>;
@@ -67,7 +98,7 @@ export interface PrepareDocumentationUpdateArguments {
 }
 
 export interface ValidateDocumentationDraftArguments {
-  readonly preparation_digest: string;
+  readonly preparation_digest?: string;
   readonly target: string;
   readonly candidate_markdown: string;
 }
@@ -90,8 +121,9 @@ export class MCPTargetRequiredError extends Error {
 }
 
 const FALLBACK_CODEC = new PreparationTokenCodec(randomBytes(32));
+const FALLBACK_PREPARATIONS = new PreparationStore();
 
-/** Builds a workflow context with a per-server token codec and fresh config loader. */
+/** Builds a workflow context with a per-server token codec, preparation store, and fresh config loader. */
 export function createMCPUpdateWorkflowContext(
   serverCwd: string,
   tokenCodec = new PreparationTokenCodec(randomBytes(32)),
@@ -100,7 +132,14 @@ export function createMCPUpdateWorkflowContext(
     loadPlanningConfigForFreshScope(serverCwd),
   loadSuppressions?: () => Promise<SuppressionConfig>,
 ): MCPUpdateWorkflowContext {
-  return { serverCwd, tokenCodec, trustPolicy, loadPlanningConfig, loadSuppressions };
+  return {
+    serverCwd,
+    tokenCodec,
+    preparations: new PreparationStore(),
+    trustPolicy,
+    loadPlanningConfig,
+    loadSuppressions,
+  };
 }
 
 /** Provides the bounded direct-call compatibility context for a server directory. */
@@ -110,6 +149,7 @@ export function defaultMCPUpdateWorkflowContext(
   return {
     serverCwd,
     tokenCodec: FALLBACK_CODEC,
+    preparations: FALLBACK_PREPARATIONS,
     trustPolicy: environmentTrustPolicy(),
     loadPlanningConfig: () => loadPlanningConfigForFreshScope(serverCwd),
   };
@@ -191,10 +231,12 @@ export async function prepareDocumentationUpdate(
     target: targetPath,
     targetDigest: sha256Hex(existingDoc),
   };
+  const preparationDigest = context.tokenCodec.issue(claims);
+  context.preparations.record(targetPath, claims, preparationDigest);
 
   return {
     schema_version: PREPARE_SCHEMA_VERSION,
-    preparation_digest: context.tokenCodec.issue(claims),
+    preparation_digest: preparationDigest,
     target: targetPath,
     generation: {
       system_prompt: inspected.approved.systemPrompt,
@@ -204,7 +246,7 @@ export async function prepareDocumentationUpdate(
     trust: inspected.summary,
     instructions: [
       "Generate only Markdown for the returned target from the approved generation input.",
-      "Call validate_documentation_draft with the preparation_digest, target, and candidate_markdown before writing.",
+      "Call validate_documentation_draft with the same target and the candidate_markdown. Do not copy preparation_digest into text.",
       "Write only after validation succeeds; this MCP workflow never writes the repository.",
     ],
   };
@@ -224,8 +266,14 @@ export async function validateDocumentationDraft(
   trust: TrustSummary;
 }> {
   const options = readValidateArguments(args);
-  const claims = context.tokenCodec.verify(options.preparationDigest);
-  if (options.target !== claims.target) throw invalidPreparation();
+  // A supplied digest must verify on its own; the store never rescues a wrong one.
+  const claims =
+    options.preparationDigest !== undefined
+      ? context.tokenCodec.verify(options.preparationDigest)
+      : context.preparations.latest(options.target)?.claims;
+  if (claims === undefined || options.target !== claims.target) {
+    throw invalidPreparation();
+  }
 
   const planningConfig = await context.loadPlanningConfig();
   const planning = await createImpactPlan({
@@ -415,7 +463,7 @@ function readPrepareArguments(
 }
 
 function readValidateArguments(args: unknown): {
-  preparationDigest: string;
+  preparationDigest?: string;
   target: string;
   candidateMarkdown: string;
 } {
@@ -424,20 +472,29 @@ function readValidateArguments(args: unknown): {
     "target",
     "candidate_markdown",
   ]);
-  const preparationDigest = readRequiredOwn(record, "preparation_digest");
+  const hasPreparationDigest = Object.hasOwn(record, "preparation_digest");
+  const preparationDigest = readOptionalOwn(record, "preparation_digest");
   const target = readRequiredOwn(record, "target");
   const candidateMarkdown = readRequiredOwn(record, "candidate_markdown");
   const normalizedTarget =
     typeof target === "string" ? normalizeInputTarget(target) : undefined;
   if (
-    typeof preparationDigest !== "string" ||
+    (hasPreparationDigest &&
+      (typeof preparationDigest !== "string" ||
+        preparationDigest.length === 0)) ||
     normalizedTarget === undefined ||
     typeof candidateMarkdown !== "string" ||
     Buffer.byteLength(candidateMarkdown, "utf8") > MAX_CANDIDATE_BYTES
   ) {
     throw invalidPreparation();
   }
-  return { preparationDigest, target: normalizedTarget, candidateMarkdown };
+  return {
+    ...(hasPreparationDigest
+      ? { preparationDigest: preparationDigest as string }
+      : {}),
+    target: normalizedTarget,
+    candidateMarkdown,
+  };
 }
 
 function readExactRecord(
