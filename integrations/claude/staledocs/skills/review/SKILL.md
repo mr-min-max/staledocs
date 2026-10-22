@@ -7,8 +7,13 @@ disable-model-invocation: true
 
 # Review documentation impact
 
-Run the published CLI in the user's intended Git worktree, using the host's
-normal shell permission:
+When the StaleDocs MCP server lists `review_documentation_impact`, call
+`review_documentation_impact` and present `documents` and `changes`; do not
+reformat numbers. If the user supplies a comparison base, pass that exact Git
+ref in `base`. Without a base, let StaleDocs discover it.
+
+Otherwise, run the published CLI in the user's intended Git worktree, using the
+host's normal shell permission:
 
 ```bash
 npx --yes staledocs@0.4.0-beta.1 review --format json

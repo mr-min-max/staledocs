@@ -69,6 +69,19 @@ All notable changes to this project are documented in this file.
   test, lint, and `verify:release` commands, the rules every agent follows,
   where documentation lives, and the definition of done. `CONTRIBUTING.md`
   now links to it.
+- Changed: `validate_documentation_draft` validates against the latest
+  server-side preparation for its `target`, so hosts no longer relay the
+  signed digest (#49). `preparation_digest` is optional; a supplied value must
+  still be exact, and stale or changed targets still fail closed. Each server
+  keeps up to 32 targets, newest preparation per target.
+- Added: every MCP tool declares an output schema and returns its JSON result
+  as `structuredContent` as well as text, including `plan_documentation_impact`
+  and `check_docs_freshness`.
+- Added: the read-only `review_documentation_impact` MCP tool returns the
+  `aidoc.review.v1` report that `staledocs review --format json` prints.
+- Added: `scripts/codex-fix-path.mjs` runs the MCP fix path through
+  `codex exec` on fixture repositories and reports first-attempt validation,
+  correctness, and repository writes per fixture.
 
 ## [0.4.0-beta.1] - 2026-09-12
 
