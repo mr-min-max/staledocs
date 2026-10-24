@@ -64,8 +64,8 @@ Start Claude Code in your Git worktree, then run:
 ```
 
 Use `/staledocs:check` for drift signals, `/staledocs:review` for the PR report,
-or `/staledocs:maintain-documentation` for a validated draft. Requires Node.js
->=22.12.0 and npm/npx. This repository hosts its own plugin marketplace;
+or `/staledocs:maintain-documentation` for a validated draft. Requires
+Node.js >=22.12.0 and npm/npx. This repository hosts its own plugin marketplace;
 it is not an approved Anthropic directory listing.
 
 ### Codex plugin
@@ -78,9 +78,9 @@ codex plugin add staledocs@staledocs
 ```
 
 In a new session, type `$` and pick `staledocs:check`, `staledocs:review`, or
-`staledocs:maintain-documentation` (or open `/skills`). Requires Node.js
->=22.12.0 and npm/npx. This repository hosts its own plugin marketplace; it is not a listing in
-OpenAI's plugin directory.
+`staledocs:maintain-documentation` (or open `/skills`). Requires
+Node.js >=22.12.0 and npm/npx. This repository hosts its own plugin
+marketplace; it is not a listing in OpenAI's plugin directory.
 
 ### Manual MCP
 
