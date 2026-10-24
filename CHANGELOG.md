@@ -7,11 +7,14 @@ All notable changes to this project are documented in this file.
 - Add `staledocs audit` and the `audit_documentation` MCP tool: a one-time,
   deterministic pass over the working tree's Markdown, including `AGENTS.md`,
   `CLAUDE.md`, and the GitHub Copilot instructions file, that reports package
-  scripts (`script-missing`) and repository paths and links (`path-missing`)
-  that no longer exist, as schema `aidoc.audit.v1`. Exit 1 only with
-  `--fail-on findings`.
-- Add a bounded, memoized Git tree listing (`GitSnapshotReader.listTree`) and
-  export the planner's documentation discovery for single-revision use.
+  scripts (`script-missing`), repository paths and links (`path-missing`), and
+  members of closed public TypeScript classes and interfaces
+  (`member-missing`) that no longer exist, as schema `aidoc.audit.v1`. Exit 1
+  only with `--fail-on findings`.
+- Add a bounded, memoized Git tree listing (`GitSnapshotReader.listTree`),
+  export the planner's documentation discovery and single-revision TypeScript
+  public surface, and add `listDeclaredTypeMembers` to the TypeScript parser
+  for declared member names; existing parser snapshots are unchanged.
 - Fix Markdown link scanning so URL links in documents below the repository
   root are no longer read as repository paths.
 - Add a Codex plugin marketplace (`.agents/plugins/marketplace.json`) so

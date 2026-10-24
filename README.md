@@ -54,11 +54,11 @@ npm install -g staledocs@beta
 
 ## Audit a repository once
 
-`staledocs audit` lists the package scripts and repository paths that your
-Markdown still mentions but the repository no longer has, including
-`AGENTS.md`, `CLAUDE.md`, and the `copilot-instructions.md` file under
-`.github`, the files coding agents read first. It needs no pull request. The
-command is new after `0.4.0-beta.1` and ships with the next beta.
+`staledocs audit` lists the package scripts, repository paths, and public
+class members that your Markdown still mentions but the code no longer has,
+including `AGENTS.md`, `CLAUDE.md`, and the `copilot-instructions.md` file
+under `.github`, the files coding agents read first. It needs no pull request.
+The command is new after `0.4.0-beta.1` and ships with the next beta.
 
 ```bash
 npm install -g staledocs@beta
@@ -68,12 +68,11 @@ staledocs audit
 Output on a small fixture repository:
 
 ```text
-AGENTS.md > Agents: script-missing "npm run lint:ci"
-
-README.md > Usage: path-missing "docs/guide.md"
+README.md > Usage: member-missing "Client.fetchAll"
+README.md > Usage: path-missing "src/core/old.ts"
 README.md > Usage: script-missing "npm run bulid" (closest: build)
 
-3 findings across 2 Markdown files: script-missing 2, path-missing 1, member-missing 0.
+3 findings across 1 Markdown file: script-missing 1, path-missing 1, member-missing 1.
 ```
 
 ## Fix the docs with your assistant

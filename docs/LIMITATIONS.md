@@ -17,6 +17,15 @@ when no such file exists here; write such paths with a placeholder, as in
 `src/<name>.ts`. Scripts are read from `package.json` manifests only; a
 document under an unreadable manifest gets no script findings.
 
+The member rule checks only public TypeScript classes and interfaces reachable
+from a resolved package entry. It skips a type with `extends`, an index
+signature, a computed member name, or more than one declaration (including
+merged interfaces and a class merged with a namespace), and every type declared
+in a JavaScript file, because inherited, indexed, and assigned members are not
+declarations. Python classes are not checked by the member rule yet. When no
+package entry resolves, or the entry walk exceeds its bound, the member rule
+reports nothing; the bound case sets `ignored.boundaryLimitReached`.
+
 ## Public boundary
 
 A public symbol is one that a consumer can import from the package entry. StaleDocs discovers entries from `package.json` (`exports`, then `types`, `module`, `main`; build paths such as `dist/<name>.js` are mapped to `src/<name>.ts` when that file exists) for the root package and one level of workspace packages, then follows static `export ... from` statements with relative specifiers. `export * as ns from` is followed one level. Bare specifiers, `require()`, dynamic `import()`, `tsconfig` path aliases, and CommonJS are not followed. Set `entry` in the configuration to override discovery. When no entry can be resolved, every export in a changed file is treated as public and the report says so.
