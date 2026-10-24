@@ -19,8 +19,24 @@ export interface DocumentationSection {
   body: string;
 }
 
+/** One code span or fenced line; `fence` is the enclosing fence's info-string language. */
+export interface DocumentationCodeEvidence {
+  text: string;
+  fence?: string;
+}
+
+/** A section with its sanitized heading, code evidence, and normalized link targets. */
+export interface DocumentationEvidenceSection {
+  file: string;
+  section: string;
+  slug: string;
+  codeEvidence: DocumentationCodeEvidence[];
+  linkTargets: string[];
+}
+
 interface ScannedSection extends DocumentationSection {
   codeSpans: string[];
+  codeEvidence: DocumentationCodeEvidence[];
   linkTargets: string[];
 }
 
@@ -52,6 +68,27 @@ export function indexDocumentation(
     slug,
     body,
   }));
+}
+
+/** Returns whether a documentation path is a changelog-style file. */
+export function isChangelogDocument(path: string): boolean {
+  return CHANGELOG_BASENAME.test(pathPosix.basename(path));
+}
+
+/** Scans Markdown into sections with code spans, fenced lines, and link targets. */
+export function scanDocumentationEvidence(
+  files: DocumentationFile[],
+): DocumentationEvidenceSection[] {
+  return scanDocumentation(files).map((section) => {
+    const label = sectionLabel(section);
+    return {
+      file: section.file,
+      section: label.section,
+      slug: label.slug,
+      codeEvidence: section.codeEvidence,
+      linkTargets: section.linkTargets,
+    };
+  });
 }
 
 /** Maps symbol changes to direct and recommended documentation sections. */
@@ -160,6 +197,10 @@ function scanDocumentation(files: DocumentationFile[]): ScannedSection[] {
       sections.push({
         ...section,
         codeSpans: [...headingEvidence.codeSpans, ...bodyEvidence.codeSpans],
+        codeEvidence: [
+          ...headingEvidence.codeEvidence,
+          ...bodyEvidence.codeEvidence,
+        ],
         linkTargets: [
           ...headingEvidence.linkTargets,
           ...bodyEvidence.linkTargets,
@@ -258,10 +299,11 @@ function splitSections(file: string, content: string): DocumentationSection[] {
 function scanSectionEvidence(
   file: string,
   body: string,
-): Pick<ScannedSection, "codeSpans" | "linkTargets"> {
+): Pick<ScannedSection, "codeSpans" | "codeEvidence" | "linkTargets"> {
   const codeSpans: string[] = [];
+  const codeEvidence: DocumentationCodeEvidence[] = [];
   const linkTargets: string[] = [];
-  let fence: { marker: "`" | "~"; length: number } | undefined;
+  let fence: { marker: "`" | "~"; length: number; language: string } | undefined;
 
   for (const line of body.split("\n")) {
     const fenceBoundary = readFenceBoundary(line);
@@ -275,20 +317,26 @@ function scanSectionEvidence(
         fence = undefined;
       } else {
         codeSpans.push(line);
+        codeEvidence.push({ text: line, fence: fence.language });
       }
       continue;
     }
     if (fenceBoundary !== undefined) {
-      fence = fenceBoundary;
+      fence = {
+        marker: fenceBoundary.marker,
+        length: fenceBoundary.length,
+        language: fenceBoundary.info.split(/\s/u, 1)[0].toLowerCase(),
+      };
       continue;
     }
 
     const inlineEvidence = scanInlineEvidence(file, line);
     codeSpans.push(...inlineEvidence.codeSpans);
+    codeEvidence.push(...inlineEvidence.codeEvidence);
     linkTargets.push(...inlineEvidence.linkTargets);
   }
 
-  return { codeSpans, linkTargets };
+  return { codeSpans, codeEvidence, linkTargets };
 }
 
 function readAtxHeading(line: string): string | undefined {
@@ -299,21 +347,25 @@ function readAtxHeading(line: string): string | undefined {
 
 function readFenceBoundary(
   line: string,
-): { marker: "`" | "~"; length: number; closing: boolean } | undefined {
+):
+  | { marker: "`" | "~"; length: number; closing: boolean; info: string }
+  | undefined {
   const match = /^ {0,3}(`{3,}|~{3,})(.*)$/u.exec(line);
   if (match === null) return undefined;
   const marker = match[1][0] as "`" | "~";
+  const info = match[2].trim();
   return {
     marker,
     length: match[1].length,
-    closing: match[2].trim().length === 0,
+    closing: info.length === 0,
+    info,
   };
 }
 
 function scanInlineEvidence(
   file: string,
   line: string,
-): Pick<ScannedSection, "codeSpans" | "linkTargets"> {
+): Pick<ScannedSection, "codeSpans" | "codeEvidence" | "linkTargets"> {
   const spans: string[] = [];
   const outsideCode = [...line];
   let cursor = 0;
@@ -338,7 +390,11 @@ function scanInlineEvidence(
     const normalized = normalizeLinkTarget(file, target);
     if (normalized !== undefined) linkTargets.push(normalized);
   }
-  return { codeSpans: spans, linkTargets };
+  return {
+    codeSpans: spans,
+    codeEvidence: spans.map((text) => ({ text })),
+    linkTargets,
+  };
 }
 
 function findBacktickRun(
@@ -474,13 +530,18 @@ function toReference(
   section: DocumentationSection,
   reason: DocumentationReference["reason"],
 ): DocumentationReference {
+  return { file: section.file, ...sectionLabel(section), reason };
+}
+
+function sectionLabel(section: DocumentationSection): {
+  section: string;
+  slug: string;
+} {
   const safeHeading = sanitizeDiagnostic(section.heading);
   return {
-    file: section.file,
     section: safeHeading,
     slug:
       safeHeading === section.heading ? section.slug : githubSlug(safeHeading),
-    reason,
   };
 }
 
