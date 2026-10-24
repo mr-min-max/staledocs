@@ -490,7 +490,12 @@ function normalizeRepositoryPath(value: string): string | undefined {
 
 function normalizeLinkTarget(file: string, target: string): string | undefined {
   const withoutFragment = target.split("#", 1)[0];
-  if (withoutFragment.length === 0 || withoutFragment.startsWith("/")) {
+  // A URL must be rejected before joining: "docs/" + "https://x" is a path.
+  if (
+    withoutFragment.length === 0 ||
+    withoutFragment.startsWith("/") ||
+    /^[A-Za-z][A-Za-z0-9+.-]*:/u.test(withoutFragment)
+  ) {
     return undefined;
   }
   const resolved = pathPosix.join(pathPosix.dirname(file), withoutFragment);
