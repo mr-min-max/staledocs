@@ -442,7 +442,7 @@ export const TOOLS: Tool[] = [
   {
     name: "audit_documentation",
     description:
-      "Audit Markdown in the repository where this MCP server started for package scripts and repository paths that no longer exist. Read-only and deterministic; it does not fix anything.",
+      "Audit Markdown in the repository where this MCP server started for package scripts, repository paths, and public class members that no longer exist. Read-only and deterministic; it does not fix anything.",
     inputSchema: {
       type: "object",
       properties: {

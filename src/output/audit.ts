@@ -59,5 +59,10 @@ export function renderAuditText(report: AuditReport): string {
   if (report.ignored?.documentationLimitReached === true) {
     lines.push("Documentation discovery stopped at its file limit.");
   }
+  if (report.ignored?.boundaryLimitReached === true) {
+    lines.push(
+      "Member rule skipped: the public entry walk exceeded its file or depth bound.",
+    );
+  }
   return lines.join("\n");
 }

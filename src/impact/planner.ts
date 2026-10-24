@@ -454,6 +454,30 @@ async function resolveTypeScriptBoundary(
   };
 }
 
+/**
+ * Resolves the TypeScript public entry at one revision. Returns each reachable
+ * file with its public names, or the fallback report when no entry resolves.
+ */
+export async function resolvePublicTypeScriptSurface(
+  reader: GitSnapshotReader,
+  revision: "base" | "head",
+  configuredEntries: readonly string[] | undefined,
+): Promise<
+  | { mode: "entry"; reachable: ReadonlyMap<string, ReadonlySet<string>> }
+  | { mode: "fallback"; reason: LanguageBoundaryReport["reason"] }
+> {
+  const manifests = await reader.listPackageManifests(revision);
+  const boundary = await resolveBoundary({
+    readFile: (path) => reader.readAt(revision, path),
+    listPackageJson: () => Promise.resolve(manifests),
+    snapshot: (path, source) => snapshotSource(path, source, false),
+    ...(configuredEntries === undefined ? {} : { configuredEntries }),
+  });
+  return boundary.report.mode === "entry"
+    ? { mode: "entry", reachable: boundary.reachable }
+    : { mode: "fallback", reason: boundary.report.reason };
+}
+
 async function resolveProjectPythonBoundary(
   reader: GitSnapshotReader,
   configuredEntries: readonly string[] | undefined,

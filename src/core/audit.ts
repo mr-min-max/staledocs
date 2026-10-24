@@ -18,8 +18,10 @@ import {
 import {
   discoverDocumentationFiles,
   readDocumentationFiles,
+  resolvePublicTypeScriptSurface,
 } from "../impact/planner";
 import { PlanFailure } from "../impact/types";
+import { listDeclaredTypeMembers } from "../parsers/typescript";
 import { sanitizeDiagnostic } from "../security/scanner";
 
 export const AUDIT_SCHEMA_VERSION = "aidoc.audit.v1" as const;
@@ -53,7 +55,18 @@ export interface AuditReport {
     truncated?: true;
   };
   findings: AuditFinding[];
-  ignored?: { documentationLimitReached?: true; treeLimitReached?: true };
+  ignored?: {
+    documentationLimitReached?: true;
+    treeLimitReached?: true;
+    /** The public entry walk hit its bound, so member rules were skipped. */
+    boundaryLimitReached?: true;
+  };
+}
+
+/** A public TypeScript class or interface whose declared members are all known. */
+export interface AuditPublicType {
+  kind: "class" | "interface";
+  members: readonly string[];
 }
 
 export interface AuditInput {
@@ -62,8 +75,11 @@ export interface AuditInput {
   /** Package directory ("." for the root) to script names; null when unreadable. */
   scripts: ReadonlyMap<string, readonly string[] | null>;
   docs: readonly DocumentationFile[];
+  /** Closed public types by name; roots absent here get no member findings. */
+  publicSymbols?: ReadonlyMap<string, AuditPublicType>;
   revision?: string;
   documentationLimitReached?: boolean;
+  boundaryLimitReached?: boolean;
 }
 
 export interface AuditOptions {
@@ -161,6 +177,8 @@ const GENERATED_PREFIXES = [
 const NON_PATH_CHARACTERS = /[\s*?{}<>$~`]/u;
 const LINE_SUFFIX = /:\d+(?::\d+)?$/u;
 const URI_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/u;
+const MEMBER_REFERENCE = /^([A-Z][A-Za-z0-9_]{3,})\.([A-Za-z_][A-Za-z0-9_]*)$/u;
+const TYPESCRIPT_SOURCE = /\.(?:ts|tsx|mts|cts)$/iu;
 const KIND_ORDER: readonly AuditFindingKind[] = [
   "member-missing",
   "path-missing",
@@ -195,6 +213,7 @@ export async function auditRepository(
     reader.listPythonPackageEntries("head"),
   ]);
   const scripts = await readPackageScripts(reader, manifests);
+  const surface = await readPublicTypes(reader, config.entry);
   let documentation;
   if (options.paths === undefined) {
     const suppressions =
@@ -219,7 +238,9 @@ export async function auditRepository(
     tree,
     scripts,
     docs: documentation.files,
+    publicSymbols: surface.types,
     documentationLimitReached: documentation.limitReached,
+    boundaryLimitReached: surface.limitReached,
   });
 }
 
@@ -272,6 +293,15 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
           });
         }
       }
+      const member = missingMember(evidence.text, input.publicSymbols);
+      if (member !== undefined) {
+        add({
+          ...location,
+          kind: "member-missing",
+          value: sanitizeDiagnostic(member),
+          evidence: "code-span",
+        });
+      }
       if (tree !== undefined) {
         const path = missingSpanPath(evidence.text, tree, [
           posix.dirname(section.file),
@@ -321,6 +351,9 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
       ? { documentationLimitReached: true as const }
       : {}),
     ...(input.tree === undefined ? { treeLimitReached: true as const } : {}),
+    ...(input.boundaryLimitReached === true
+      ? { boundaryLimitReached: true as const }
+      : {}),
   };
   return {
     schema_version: AUDIT_SCHEMA_VERSION,
@@ -336,6 +369,69 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
     findings: sorted.slice(0, AUDIT_FINDING_LIMIT),
     ...(Object.keys(ignored).length === 0 ? {} : { ignored }),
   };
+}
+
+/**
+ * Reads the declared members of public TypeScript classes and interfaces.
+ * A root declared more than once, in a JavaScript file, or with members
+ * that can come from elsewhere is left out, so it gets no member findings.
+ */
+async function readPublicTypes(
+  reader: GitSnapshotReader,
+  configuredEntries: readonly string[] | undefined,
+): Promise<{ types: Map<string, AuditPublicType>; limitReached: boolean }> {
+  const surface = await resolvePublicTypeScriptSurface(
+    reader,
+    "head",
+    configuredEntries,
+  );
+  const types = new Map<string, AuditPublicType>();
+  if (surface.mode === "fallback") {
+    return { types, limitReached: surface.reason === "limit-exceeded" };
+  }
+  const declarations = new Map<string, number>();
+  const closed = new Map<string, AuditPublicType>();
+  for (const [path, names] of [...surface.reachable].sort(([left], [right]) =>
+    compareStrings(left, right),
+  )) {
+    if (!TYPESCRIPT_SOURCE.test(path)) {
+      for (const name of names) {
+        declarations.set(name, (declarations.get(name) ?? 0) + 1);
+      }
+      continue;
+    }
+    let declared;
+    try {
+      const source = await reader.readAt("head", path);
+      declared = source === undefined ? [] : listDeclaredTypeMembers(path, source);
+    } catch {
+      continue;
+    }
+    for (const type of declared) {
+      if (!names.has(type.name)) continue;
+      declarations.set(type.name, (declarations.get(type.name) ?? 0) + 1);
+      if (type.closed) {
+        closed.set(type.name, { kind: type.kind, members: type.members });
+      }
+    }
+  }
+  for (const [name, type] of closed) {
+    if (declarations.get(name) === 1) types.set(name, type);
+  }
+  return { types, limitReached: false };
+}
+
+function missingMember(
+  text: string,
+  publicSymbols: ReadonlyMap<string, AuditPublicType> | undefined,
+): string | undefined {
+  if (publicSymbols === undefined) return undefined;
+  const span = text.trim();
+  const match = MEMBER_REFERENCE.exec(span);
+  if (match === null) return undefined;
+  const type = publicSymbols.get(match[1]);
+  if (type === undefined || type.members.includes(match[2])) return undefined;
+  return span;
 }
 
 async function readPackageScripts(
