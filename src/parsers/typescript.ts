@@ -478,6 +478,101 @@ function unwrapParentheses(node: Node): Node {
 function isJavaScriptModulePath(filePath: string): boolean {
   return /\.(?:js|jsx|mjs|cjs)$/iu.test(filePath);
 }
+
+/** Declared members of one exported TypeScript class or interface. */
+export interface DeclaredTypeMembers {
+  /** The exported name, as snapshots and boundary resolution use it. */
+  name: string;
+  kind: "class" | "interface";
+  /** Every declared member name of any visibility, static or instance. */
+  members: string[];
+  /**
+   * False when members can come from elsewhere: a heritage clause, an index
+   * signature, a computed member name, or more than one declaration.
+   */
+  closed: boolean;
+}
+
+/**
+ * Lists declared member names of exported classes and interfaces in
+ * TypeScript source. JavaScript sources return nothing: their instances gain
+ * members through assignments that are not declarations.
+ */
+export function listDeclaredTypeMembers(
+  filePath: string,
+  source: string,
+): DeclaredTypeMembers[] {
+  if (!/\.(?:ts|tsx|mts|cts)$/iu.test(filePath)) return [];
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    skipAddingFilesFromTsConfig: true,
+  });
+  const sourceFile = project.createSourceFile(filePath, source);
+  if (project.getProgram().getSyntacticDiagnostics(sourceFile).length > 0) {
+    throw new Error("TypeScript syntax error.");
+  }
+  const exportedDeclarations = sourceFile.getExportedDeclarations();
+  const byName = new Map<string, DeclaredTypeMembers>();
+  for (const binding of enumerateExports(sourceFile)) {
+    const declaration = binding.declaration;
+    if (
+      !Node.isClassDeclaration(declaration) &&
+      !Node.isInterfaceDeclaration(declaration)
+    ) {
+      continue;
+    }
+    const declarationCount = Math.max(
+      exportedDeclarations.get(binding.exportName)?.length ?? 0,
+      declaration.getSymbol()?.getDeclarations().length ?? 0,
+    );
+    const declared = declaredMemberNames(declaration);
+    const previous = byName.get(binding.exportedName);
+    byName.set(binding.exportedName, {
+      name: binding.exportedName,
+      kind: Node.isClassDeclaration(declaration) ? "class" : "interface",
+      members: [...new Set([...(previous?.members ?? []), ...declared.names])],
+      closed:
+        previous === undefined && declarationCount <= 1 && declared.closed,
+    });
+  }
+  return [...byName.values()]
+    .map((entry) => ({ ...entry, members: [...entry.members].sort(compareText) }))
+    .sort((left, right) => compareText(left.name, right.name));
+}
+
+function declaredMemberNames(
+  declaration: ClassDeclaration | InterfaceDeclaration,
+): { names: string[]; closed: boolean } {
+  const names: string[] = [];
+  // ts-morph omits class index signatures from getMembers(), so read the AST.
+  let closed =
+    (Node.isClassDeclaration(declaration)
+      ? declaration.getExtends() === undefined
+      : declaration.getExtends().length === 0) &&
+    !declaration.compilerNode.members.some(
+      (member) => member.kind === SyntaxKind.IndexSignature,
+    );
+  for (const member of declaration.getMembers()) {
+    if (Node.isConstructorDeclaration(member)) {
+      for (const parameter of member.getParameters()) {
+        if (parameter.isParameterProperty()) names.push(parameter.getName());
+      }
+    } else if (Node.isPropertyNamed(member)) {
+      const nameNode = member.getNameNode();
+      if (Node.isComputedPropertyName(nameNode)) {
+        closed = false;
+      } else if (
+        Node.isStringLiteral(nameNode) ||
+        Node.isNoSubstitutionTemplateLiteral(nameNode)
+      ) {
+        names.push(nameNode.getLiteralValue());
+      } else {
+        names.push(nameNode.getText());
+      }
+    }
+  }
+  return { names, closed };
+}
 type AstTuple = [kind: number, text: string | null, children: AstTuple[]];
 type CallableDeclaration =
   | FunctionDeclaration

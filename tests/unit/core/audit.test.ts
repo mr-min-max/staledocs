@@ -449,9 +449,12 @@ describe("assessDocumentationAudit report", () => {
     expect(report.ignored).toEqual({ treeLimitReached: true });
   });
 
-  it("carries the documentation limit flag", () => {
+  it("carries the documentation and boundary limit flags", () => {
     expect(audit(docs, { documentationLimitReached: true }).ignored).toEqual({
       documentationLimitReached: true,
+    });
+    expect(audit(docs, { boundaryLimitReached: true }).ignored).toEqual({
+      boundaryLimitReached: true,
     });
   });
 
