@@ -86,7 +86,7 @@ Options:
 ### `staledocs api`
 
 Generates API documentation from the analyzed modules. The default output is
-`./docs/API.md`.
+`API.md` in `./docs`.
 
 ```bash
 staledocs api
@@ -138,7 +138,7 @@ staledocs diagram --yes
 staledocs diagram --mock
 ```
 
-The default output is `./docs/architecture.md`. The options are
+The default output is `architecture.md` in `./docs`. The options are
 `-o, --output <path>`, `--dry-run`, `--yes`, `--strict-output`, and `--mock`.
 
 ### `staledocs annotate`
