@@ -2,7 +2,7 @@ import type { PlanningConfig } from "../config/planning";
 import type { SuppressionConfig } from "../config/suppressions";
 import { getChangedFiles } from "../git/history";
 import { createImpactPlan } from "../impact/planner";
-import type { SymbolChange } from "../impact/types";
+import { isContractChange, type SymbolChange } from "../impact/types";
 import {
   REVIEW_SCHEMA_VERSION,
   type ReviewReport,
@@ -49,11 +49,7 @@ export async function buildReviewReport(
       : (plan.head.commit ?? plan.head.label),
   );
   const publicChanges = plan.changes
-    .filter(isReviewChange)
-    .filter(
-      (change): change is typeof change & { qualifiedName: string } =>
-        change.qualifiedName !== undefined,
-    )
+    .filter(isContractChange)
     .map(
       (change): ReviewReportChange => ({
         id: change.id,
@@ -82,18 +78,11 @@ export async function buildReviewReport(
   >();
   for (const impact of plan.documentation) {
     const change = changesById.get(impact.changeId);
-    if (
-      change?.qualifiedName === undefined ||
-      change.visibility === "internal"
-    ) {
-      continue;
-    }
-    if (isReviewChange(change)) {
-      reviewImpactNames.set(impact.changeId, {
-        qualifiedName: change.qualifiedName,
-        kind: change.kind,
-      });
-    }
+    if (change === undefined || !isContractChange(change)) continue;
+    reviewImpactNames.set(impact.changeId, {
+      qualifiedName: change.qualifiedName,
+      kind: change.kind,
+    });
     if (impact.directReferences.length > 0) {
       directlyMapped.add(change.qualifiedName);
       const separator = change.qualifiedName.indexOf(".");
@@ -181,19 +170,6 @@ export async function buildReviewReport(
     verdict: breaking > 0 ? "breaking" : staleDocuments > 0 ? "stale" : "clean",
   };
   return report;
-}
-
-function isReviewChange(change: SymbolChange): boolean {
-  return (
-    change.scope === "symbol" &&
-    change.visibility !== "internal" &&
-    (change.category === "added" ||
-      change.category === "exposed" ||
-      change.category === "removed" ||
-      change.category === "hidden" ||
-      change.category === "moved" ||
-      change.category === "contract-changed")
-  );
 }
 
 function compareStrings(left: string, right: string): number {

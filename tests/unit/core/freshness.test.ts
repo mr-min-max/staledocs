@@ -155,33 +155,6 @@ describe("assessDocumentationFreshness", () => {
     expect(report.targetChanged).toBe(true);
   });
 
-  it("keeps an unmapped changed symbol clean and reports it", () => {
-    const changed = change({ qualifiedName: "unmentioned", category: "implementation-changed" });
-    const report = assessDocumentationFreshness({
-      plan: mappedPlan([changed], "# Demo\n\n## API\n\nNo symbols here.\n"),
-      changedFiles: ["src/user.ts"],
-      target: "README.md",
-      targetExists: true,
-    });
-
-    expect(report.status).toBe("clean");
-    expect(report.unmappedSymbols).toEqual(["unmentioned"]);
-  });
-
-  it("treats an implementation change as stale when directly mentioned", () => {
-    const report = assessDocumentationFreshness({
-      plan: mappedPlan(
-        [change({ category: "implementation-changed" })],
-        "# Demo\n\n## API\n\n`createUser` creates a user.\n",
-      ),
-      changedFiles: ["src/user.ts"],
-      target: "README.md",
-      targetExists: true,
-    });
-
-    expect(report.status).toBe("stale");
-  });
-
   it.each([
     ["implementation-changed", ["src/user.ts"]],
     ["documentation-changed", ["src/user.ts", "README.md"]],

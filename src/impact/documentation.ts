@@ -48,6 +48,7 @@ interface MutableSection {
 }
 
 const GENERIC_HEADING_NAMES = new Set(["get", "set", "run", "main", "open"]);
+// Recommendation set only: unlike CONTRACT_CHANGE_CATEGORIES it omits `moved`.
 const API_CATEGORIES = new Set([
   "added",
   "exposed",

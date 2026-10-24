@@ -73,6 +73,28 @@ export interface SymbolChange {
   digest: string;
 }
 
+/** Categories that change a symbol's contract or its public visibility. */
+export const CONTRACT_CHANGE_CATEGORIES: ReadonlySet<ChangeCategory> = new Set([
+  "added",
+  "exposed",
+  "removed",
+  "hidden",
+  "moved",
+  "contract-changed",
+]);
+
+/** Returns whether a public symbol change can make documentation stale. */
+export function isContractChange(
+  change: SymbolChange,
+): change is SymbolChange & { qualifiedName: string } {
+  return (
+    change.scope === "symbol" &&
+    change.visibility !== "internal" &&
+    change.qualifiedName !== undefined &&
+    CONTRACT_CHANGE_CATEGORIES.has(change.category)
+  );
+}
+
 export interface DocumentationReference {
   file: string;
   section: string;
