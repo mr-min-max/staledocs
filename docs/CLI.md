@@ -374,6 +374,11 @@ Rules, applied to inline code spans, fenced code lines, and link targets:
   `tests/`, or `.github/`, or ends with a source, Markdown, or configuration
   extension; spans are resolved from the repository root, the document's
   directory, and its package directory.
+- `member-missing`: a span exactly `Root.member`, such as `Client.fetchAll`,
+  where `Root` is a public TypeScript class or interface whose members are all
+  declared in one place and `member` is not among them. Members of any
+  visibility count as declared, including properties, accessors, parameter
+  properties, and static members.
 
 Text output prints one line per finding, grouped by file, such as
 `README.md > Usage: script-missing "npm run bulid" (closest: build)`, then a
