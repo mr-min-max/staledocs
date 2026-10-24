@@ -1,9 +1,9 @@
 # StaleDocs with Codex
 
 This guide covers the Codex plugin and manual local MCP setup for the published
-`0.4.0-beta.1` StaleDocs CLI. It works in the Codex CLI, the IDE extension, and the
-desktop app. It is not a ChatGPT web integration: ChatGPT web does not read local
-Codex configuration or local stdio MCP servers.
+`0.4.0-beta.1` StaleDocs CLI. The plugin commands below were checked with Codex CLI
+0.163.0-alpha.10.2. It is not a ChatGPT web integration: ChatGPT web does not read
+local Codex configuration or local stdio MCP servers.
 
 Codex signs in with your ChatGPT account; that authorizes the host's model access.
 StaleDocs receives no ChatGPT OAuth token and needs no API key for drift analysis,
