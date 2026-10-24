@@ -219,6 +219,20 @@ describe("assessDocumentationAudit false positives", () => {
     ).toEqual([]);
   });
 
+  it("FP2 ignores URL links in documents below the repository root", () => {
+    expect(
+      compact({
+        "docs/guide-v2.md": [
+          "# Guide",
+          "",
+          "[pr](https://github.com/org/repo/pull/1) [mail](mailto:team@example.com)",
+          "[ref](HTTPS://example.com/a.md)",
+          "",
+        ].join("\n"),
+      }),
+    ).toEqual([]);
+  });
+
   it("FP3 ignores build output, home, absolute, glob, and placeholder spans", () => {
     expect(
       compact({
