@@ -41,6 +41,7 @@ schema; in `0.4.0-beta.1` only the prepare and validate tools do.
 | `generate_api_docs`            | Generate API reference Markdown with the configured direct provider.                          |
 | `generate_diagram`             | Generate a Mermaid architecture diagram with the configured direct provider.                  |
 | `check_docs_freshness`         | Report sections of one document that mention changed public symbols.                          |
+| `audit_documentation`          | Unreleased: return the `aidoc.audit.v1` report that `staledocs audit --json` prints.          |
 | `plan_documentation_impact`    | Return the `aidoc.impact-plan.v1` plan for a base and head.                                   |
 | `review_documentation_impact`  | Unreleased: return the `aidoc.review.v1` report that `staledocs review --format json` prints. |
 | `prepare_documentation_update` | Prepare one bounded Markdown update without writing files or calling a provider.              |
