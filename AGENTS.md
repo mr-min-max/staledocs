@@ -15,16 +15,16 @@ Node.js >=22.12.0, TypeScript.
 - `src/parsers`: TypeScript and JavaScript through ts-morph, Python through the embedded `ast` script.
 - `src/impact`: public boundary, snapshot comparison, documentation mapping, planner, impact context.
 - `src/git`: Git history helpers and the revision snapshot reader.
-- `src/core`: freshness checks, scoring, and the legacy generation pipeline.
+- `src/core`: freshness checks, the review report (`src/core/review.ts`), scoring, and the legacy generation pipeline.
 - `src/output`: review, impact, and Markdown renderers.
-- `src/cli`: Commander commands; `src/cli/commands/review.ts` builds the review report.
-- `src/mcp`: stdio MCP server (`staledocs --mcp`), repository-scoped config, preparation tokens, update workflow.
+- `src/cli`: Commander commands; `src/cli/commands/review.ts` renders the review report and applies `--fail-on`.
+- `src/mcp`: stdio MCP server (`staledocs --mcp`), repository-scoped config, preparation tokens, the per-target preparation store, update workflow.
 - `src/security`: Trust Gate, repository path safety, repository writer.
 - `src/config`: configuration loading, schema, planning options, suppressions.
 - `src/providers` and `src/templates`: legacy generators (LLM provider adapters, Handlebars prompts).
 - `action/` and `action.yml`: the GitHub Action.
 - `integrations/claude/staledocs` and `integrations/codex/staledocs`: assistant plugins.
-- `scripts/`: release gates, external evaluator, demos.
+- `scripts/`: release gates, external evaluator, demos, and the Codex fix-path harness (`codex-fix-path.mjs`, not run in CI).
 - `tests/`: `unit/` (Jest), `e2e/` (Node test runner and smoke scripts), `fixtures/`.
 - `docs/`: user and maintainer documentation.
 
