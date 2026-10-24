@@ -891,6 +891,69 @@ exec "${realGit}" "$@"
     ]);
   });
 
+  test("lists the committed tree and the working tree once per revision", async () => {
+    const root = repo();
+    mkdirSync(join(root, "docs"));
+    writeFileSync(join(root, "docs", "guide.md"), "# Guide\n");
+    writeFileSync(join(root, ".gitignore"), "ignored.md\n");
+    writeFileSync(join(root, "removed.ts"), "export const removed = 1;\n");
+    commit(root, "initial");
+    unlinkSync(join(root, "removed.ts"));
+    execFileSync("git", ["rm", "-q", "--cached", "removed.ts"], { cwd: root });
+    writeFileSync(join(root, "untracked.md"), "# New\n");
+    writeFileSync(join(root, "ignored.md"), "# Ignored\n");
+
+    const committed = new GitSnapshotReader(root);
+    await committed.read({ base: "HEAD", head: "HEAD", include: [], exclude: [] });
+    expect([...((await committed.listTree("head")) ?? [])].sort()).toEqual([
+      ".gitignore",
+      "docs/guide.md",
+      "removed.ts",
+    ]);
+
+    const working = new GitSnapshotReader(root);
+    await expect(working.openWorkingTree()).resolves.toEqual({
+      root: realpathSync(root),
+      head: { type: "working-tree", label: "HEAD" },
+    });
+    const tree = await working.listTree("head");
+    expect([...(tree ?? [])].sort()).toEqual([
+      ".gitignore",
+      "docs/guide.md",
+      "untracked.md",
+    ]);
+    writeFileSync(join(root, "later.md"), "# Later\n");
+    await expect(working.listTree("head")).resolves.toBe(tree);
+  });
+
+  test("reports an unavailable tree above the entry or byte bound", async () => {
+    const root = repo();
+    writeFileSync(join(root, "a.md"), "a\n");
+    writeFileSync(join(root, "b.md"), "b\n");
+    commit(root, "initial");
+
+    const byEntries = new GitSnapshotReader(root);
+    await byEntries.openWorkingTree();
+    await expect(byEntries.listTree("head", { entries: 1 })).resolves.toBeUndefined();
+
+    const byBytes = new GitSnapshotReader(root);
+    await byBytes.openWorkingTree();
+    await expect(byBytes.listTree("head", { bytes: 4 })).resolves.toBeUndefined();
+
+    const within = new GitSnapshotReader(root);
+    await within.openWorkingTree();
+    await expect(within.listTree("head", { entries: 2 })).resolves.toEqual(
+      new Set(["a.md", "b.md"]),
+    );
+  });
+
+  test("fails closed when the working tree has no commit to pin", async () => {
+    const root = repo();
+    await expect(new GitSnapshotReader(root).openWorkingTree()).rejects.toMatchObject({
+      code: "PLAN_HEAD_NOT_FOUND",
+    });
+  });
+
   test("rejects direct containment escapes with a fixed unsafe-path error", async () => {
     const root = repo();
     const outside = join(root, "..", "staledocs-outside-sentinel.ts");
