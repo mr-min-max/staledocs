@@ -75,7 +75,7 @@ interface LanguageBoundaryResolution {
   documentationDirectories: string[];
 }
 
-interface DocumentationDiscovery {
+export interface DocumentationDiscovery {
   files: DocumentationFile[];
   limitReached: boolean;
 }
@@ -454,6 +454,30 @@ async function resolveTypeScriptBoundary(
   };
 }
 
+/**
+ * Resolves the TypeScript public entry at one revision. Returns each reachable
+ * file with its public names, or the fallback report when no entry resolves.
+ */
+export async function resolvePublicTypeScriptSurface(
+  reader: GitSnapshotReader,
+  revision: "base" | "head",
+  configuredEntries: readonly string[] | undefined,
+): Promise<
+  | { mode: "entry"; reachable: ReadonlyMap<string, ReadonlySet<string>> }
+  | { mode: "fallback"; reason: LanguageBoundaryReport["reason"] }
+> {
+  const manifests = await reader.listPackageManifests(revision);
+  const boundary = await resolveBoundary({
+    readFile: (path) => reader.readAt(revision, path),
+    listPackageJson: () => Promise.resolve(manifests),
+    snapshot: (path, source) => snapshotSource(path, source, false),
+    ...(configuredEntries === undefined ? {} : { configuredEntries }),
+  });
+  return boundary.report.mode === "entry"
+    ? { mode: "entry", reachable: boundary.reachable }
+    : { mode: "fallback", reason: boundary.report.reason };
+}
+
 async function resolveProjectPythonBoundary(
   reader: GitSnapshotReader,
   configuredEntries: readonly string[] | undefined,
@@ -686,12 +710,69 @@ function isJavaScriptPath(path: string): boolean {
   return /\.(?:js|jsx|mjs|cjs)$/u.test(path);
 }
 
+/**
+ * Discovers documentation exactly as planning does, plus named extra Markdown
+ * files (such as agent instructions) when present and not excluded.
+ */
+export async function discoverDocumentationFiles(
+  root: string,
+  config: Pick<PlanningConfig, "outputDir" | "docs" | "exclude">,
+  options: {
+    packageDirectories?: readonly string[];
+    extraFiles?: readonly string[];
+  } = {},
+): Promise<DocumentationDiscovery> {
+  return loadDocumentationFiles(
+    root,
+    config.outputDir,
+    config.docs,
+    options.packageDirectories ?? [],
+    config.exclude,
+    options.extraFiles,
+  );
+}
+
+/** Reads explicitly named repository-relative Markdown files through the safe reader. */
+export async function readDocumentationFiles(
+  root: string,
+  paths: readonly string[],
+): Promise<DocumentationDiscovery> {
+  const normalized = paths.map((path) => {
+    const candidate = normalizeDocumentationPath(path);
+    if (candidate === undefined || !candidate.toLowerCase().endsWith(".md")) {
+      throw new PlanFailure(
+        "PLAN_UNSAFE_WORKTREE_PATH",
+        "The working-tree path is unsafe.",
+      );
+    }
+    return candidate;
+  });
+  const unique = [...new Set(normalized)].sort(compareStrings);
+  const files: DocumentationFile[] = [];
+  for (const path of unique.slice(0, DOCUMENTATION_DISCOVERY_LIMIT)) {
+    const content = await readSafeDocumentationFile(root, path);
+    if (content === undefined) {
+      throw new PlanFailure(
+        "PLAN_SOURCE_READ_FAILED",
+        "Unable to read repository source.",
+        path,
+      );
+    }
+    files.push({ path, content });
+  }
+  return {
+    files,
+    limitReached: unique.length > DOCUMENTATION_DISCOVERY_LIMIT,
+  };
+}
+
 async function loadDocumentationFiles(
   root: string,
   configuredOutputDir: string,
   configuredDocs: readonly string[] | undefined,
   packageDocumentationDirectories: readonly string[],
   exclude: string[],
+  extraFiles: readonly string[] = [],
 ): Promise<DocumentationDiscovery> {
   const rootCandidates = await rootMarkdownFiles(root, {
     limit: ROOT_MARKDOWN_LIMIT,
@@ -739,6 +820,21 @@ async function loadDocumentationFiles(
       if (!recordDocumentationFile(path, budget)) break;
       addDocumentationCandidate(path, exclude, budget);
     }
+  }
+  for (const extra of [...new Set(extraFiles)].sort(compareStrings)) {
+    if (budget.limitReached) break;
+    const path = normalizeDocumentationPath(extra);
+    if (path === undefined || !path.toLowerCase().endsWith(".md")) continue;
+    const validated = await safeExistingAbsolutePath(root, path);
+    if (
+      validated === undefined ||
+      !validated.stat.isFile() ||
+      validated.stat.isSymbolicLink()
+    ) {
+      continue;
+    }
+    if (!recordDocumentationFile(path, budget)) break;
+    addDocumentationCandidate(path, exclude, budget);
   }
 
   const candidates = new Set([...rootCandidates, ...budget.paths]);

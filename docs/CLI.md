@@ -86,7 +86,7 @@ Options:
 ### `staledocs api`
 
 Generates API documentation from the analyzed modules. The default output is
-`./docs/API.md`.
+`API.md` in `./docs`.
 
 ```bash
 staledocs api
@@ -138,7 +138,7 @@ staledocs diagram --yes
 staledocs diagram --mock
 ```
 
-The default output is `./docs/architecture.md`. The options are
+The default output is `architecture.md` in `./docs`. The options are
 `-o, --output <path>`, `--dry-run`, `--yes`, `--strict-output`, and `--mock`.
 
 ### `staledocs annotate`
@@ -345,6 +345,91 @@ entry contains a repository-relative `path` and a bounded reason. Text and Markd
 outputs include the same not-analyzed information.
 
 Review categories are `added`, `now exported`, `removed`, `no longer exported`, `moved`, and changed contract facets. `members` alone is rendered as `members changed`. `no longer exported` is potentially breaking; `now exported` is informational.
+
+### `staledocs audit`
+
+Audits the Markdown in the working tree once, without a pull request or a Git
+range. It reads the documentation the planner discovers plus `AGENTS.md`,
+`CLAUDE.md`, and the `copilot-instructions.md` file under `.github` when
+present, and skips changelog-style files. Planning `exclude` globs and
+`.staledocsignore` apply. It uses no model, API key, or repository write.
+
+```bash
+staledocs audit
+staledocs audit --json
+staledocs audit --fail-on findings
+staledocs audit --path AGENTS.md --path docs/guide.md
+```
+
+Rules, applied to inline code spans, fenced code lines, and link targets:
+
+- `script-missing`: a span such as `npm run build`, `npm test`, `pnpm lint`,
+  `yarn build`, or `bun run dev` names a script that neither the root
+  `package.json` nor the document's nearest package manifest defines. Package
+  manager commands, flags, and workspace-targeted runs are not script names.
+  `closest` names a defined script within two edits.
+- `path-missing`: a relative link target, or a code span that looks like a
+  repository path, names no file or directory in the working tree. A span
+  counts when it starts with a source directory such as `src/`, `docs/`,
+  `tests/`, or `.github/`, or ends with a source, Markdown, or configuration
+  extension; spans are resolved from the repository root, the document's
+  directory, and its package directory.
+- `member-missing`: a span exactly `Root.member`, such as `Client.fetchAll`,
+  where `Root` is a public TypeScript class or interface whose members are all
+  declared in one place and `member` is not among them. Members of any
+  visibility count as declared, including properties, accessors, parameter
+  properties, and static members.
+
+Text output prints one line per finding, grouped by file, such as
+`README.md > Usage: script-missing "npm run bulid" (closest: build)`, then a
+summary line. Removed lines (`-`) in `diff` and `patch` fences are skipped.
+
+Options:
+
+- `--json` prints the versioned JSON report.
+- `--fail-on findings` exits 1 when the report has at least one finding.
+- `--path <file...>` audits only these repository-relative Markdown files.
+
+JSON uses schema `aidoc.audit.v1`:
+
+```json
+{
+  "schema_version": "aidoc.audit.v1",
+  "revision": "working-tree",
+  "summary": {
+    "findings": 1,
+    "files": 2,
+    "byKind": { "member-missing": 0, "path-missing": 0, "script-missing": 1 }
+  },
+  "findings": [
+    {
+      "file": "README.md",
+      "section": "Usage",
+      "slug": "usage",
+      "kind": "script-missing",
+      "value": "npm run bulid",
+      "closest": "build",
+      "evidence": "code-span"
+    }
+  ]
+}
+```
+
+Findings are sorted by file, section slug, kind, and value. At most 500 are
+listed; `summary.findings` keeps the full count and `summary.truncated` is set.
+The tree listing stops at 200,000 entries or 32 MiB of Git output per listing;
+past that bound path rules are skipped and `ignored.treeLimitReached` is set.
+Documentation discovery limits match the planner's and set
+`ignored.documentationLimitReached`.
+
+Exit codes: 0 by default, including when there are findings; 1 with
+`--fail-on findings` when `summary.findings` is above zero; 2 when the audit
+cannot run, such as outside a Git repository, before the first commit, for an
+unsafe, missing, or non-Markdown `--path`, or for an unsupported option value.
+
+The MCP tool `audit_documentation` returns the same report for the repository
+where the server started; its optional `paths` list follows the MCP repository
+scope.
 
 ### `.staledocsignore`
 

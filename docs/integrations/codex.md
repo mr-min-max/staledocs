@@ -50,6 +50,8 @@ Skills, mentioned in Codex with `$` or chosen from `/skills`:
 MCP tools the skills use:
 
 - `check_docs_freshness`: stale sections that mention changed public symbols.
+- `audit_documentation`: whole-repository Markdown references to scripts,
+  paths, and class members that no longer exist (releases after `0.4.0-beta.1`).
 - `plan_documentation_impact`: affected documentation targets for a base and head.
 - `prepare_documentation_update`: bounded context and prompts for one target.
 - `validate_documentation_draft`: validate a candidate without writing files.

@@ -8,6 +8,8 @@ const execFile = promisify(execFileCallback);
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 const MAX_BUFFER = 4 * 1024 * 1024;
 const WORKTREE_READ_TIMEOUT_MS = 5_000;
+const TREE_ENTRY_LIMIT = 200_000;
+const TREE_LISTING_MAX_BYTES = 32 * 1024 * 1024;
 const STATUS = new Set(["A", "M", "D", "R", "T"]);
 
 interface PathSemantics {
@@ -121,6 +123,12 @@ export interface SnapshotFileChange {
   excluded: boolean;
   analysis?: "commonjs" | "unsupported";
 }
+export interface TreeListingLimits {
+  /** Maximum distinct entries; above it the listing is unavailable. */
+  entries?: number;
+  /** Maximum bytes of each Git listing command's output. */
+  bytes?: number;
+}
 export interface GitSnapshotSet {
   root: string;
   base: SnapshotDescriptor;
@@ -135,6 +143,10 @@ export class GitSnapshotReader {
   private baseCommit?: string;
   private headCommit?: string;
   private headUsesWorkingTree = false;
+  private readonly trees = new Map<
+    "base" | "head",
+    ReadonlySet<string> | undefined
+  >();
 
   constructor(
     private readonly cwd: string,
@@ -166,6 +178,7 @@ export class GitSnapshotReader {
     this.baseCommit = baseCommit;
     this.headCommit = headCommit;
     this.headUsesWorkingTree = !immutable;
+    this.trees.clear();
     const changes = immutable
       ? await this.committedDiff(baseCommit, headCommit)
       : await this.workingDiff(baseCommit);
@@ -266,6 +279,78 @@ export class GitSnapshotReader {
       files,
       ignored: { unsupported, excluded },
     };
+  }
+
+  /** Pins HEAD and the working tree for single-revision reads without a diff. */
+  async openWorkingTree(): Promise<{ root: string; head: SnapshotDescriptor }> {
+    const root = await this.gitRoot();
+    this.repositoryRoot = root;
+    this.headCommit = await this.resolveCommit("HEAD", "PLAN_HEAD_NOT_FOUND");
+    this.headUsesWorkingTree = true;
+    this.trees.clear();
+    return { root, head: { type: "working-tree", label: "HEAD" } };
+  }
+
+  /**
+   * Lists every path at a revision once, from `git ls-tree` or, for a
+   * working-tree head, tracked plus untracked non-ignored files. Returns
+   * undefined when the entry or byte bound is exceeded.
+   */
+  async listTree(
+    revision: "base" | "head",
+    limits: TreeListingLimits = {},
+  ): Promise<ReadonlySet<string> | undefined> {
+    if (this.trees.has(revision)) return this.trees.get(revision);
+    const commit = revision === "base" ? this.baseCommit : this.headCommit;
+    const entryLimit = limits.entries ?? TREE_ENTRY_LIMIT;
+    const byteLimit = limits.bytes ?? TREE_LISTING_MAX_BYTES;
+    if (
+      commit === undefined ||
+      !Number.isSafeInteger(entryLimit) ||
+      !Number.isSafeInteger(byteLimit)
+    ) {
+      throw new PlanFailure(
+        "PLAN_SOURCE_READ_FAILED",
+        "Unable to read repository snapshot.",
+      );
+    }
+    let tree: Set<string> | undefined = new Set<string>();
+    try {
+      const outputs =
+        revision === "head" && this.headUsesWorkingTree
+          ? await Promise.all([
+              this.runBounded(["ls-files", "-z", "--"], byteLimit),
+              this.runBounded(
+                ["ls-files", "--others", "--exclude-standard", "-z", "--"],
+                byteLimit,
+              ),
+            ])
+          : [
+              await this.runBounded(
+                ["ls-tree", "-r", "--name-only", "-z", commit, "--"],
+                byteLimit,
+              ),
+            ];
+      for (const path of outputs.flatMap(parseNulPaths)) {
+        const normalized = normalizePath(path);
+        if (normalized === undefined) continue;
+        tree.add(normalized);
+        if (tree.size > entryLimit) {
+          tree = undefined;
+          break;
+        }
+      }
+    } catch (error) {
+      if (!(error instanceof TreeListingTooLarge)) {
+        throw new PlanFailure(
+          "PLAN_SOURCE_READ_FAILED",
+          "Unable to read repository snapshot.",
+        );
+      }
+      tree = undefined;
+    }
+    this.trees.set(revision, tree);
+    return tree;
   }
 
   /** Reads a repository file at the base commit, head commit, or working tree. */
@@ -449,6 +534,27 @@ export class GitSnapshotReader {
       return result.stdout;
     } catch {
       throw new Error("git command failed");
+    }
+  }
+  private async runBounded(args: string[], maxBuffer: number): Promise<string> {
+    try {
+      const result = await execFile("git", args, {
+        cwd: this.repositoryRoot ?? this.cwd,
+        env: this.env,
+        maxBuffer,
+        windowsHide: true,
+      });
+      return result.stdout;
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+      ) {
+        throw new TreeListingTooLarge();
+      }
+      throw new Error("git command failed", { cause: error });
     }
   }
   private validateRef(ref: string): void {
@@ -687,6 +793,8 @@ export class GitSnapshotReader {
     }
   }
 }
+
+class TreeListingTooLarge extends Error {}
 
 function normalizePath(value: string): string | undefined {
   if (value.includes("\0") || value.includes("\n") || value.startsWith("/"))

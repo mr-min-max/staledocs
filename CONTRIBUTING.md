@@ -79,14 +79,14 @@ contact details in issues, fixtures, logs, or pull requests.
 
 ## Adding a New Language Parser
 
-1. Create `src/parsers/yourlang.ts` implementing the `LanguageParser` interface
+1. Create `src/parsers/<language>.ts` implementing the `LanguageParser` interface
 2. Register it in `src/parsers/registry.ts`
 3. Create test fixtures in `tests/fixtures/`
 4. Write comprehensive tests in `tests/unit/parsers/`
 
 ## Adding a New LLM Provider
 
-1. Create `src/providers/yourprovider.ts` implementing `LLMProvider`
+1. Create `src/providers/<provider>.ts` implementing `LLMProvider`
 2. Register it in `src/providers/registry.ts`
 3. Update configuration defaults only if the provider needs new settings
 4. Write unit tests

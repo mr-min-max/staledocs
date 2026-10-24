@@ -11,6 +11,7 @@
  * - generate_api_docs: Generate API reference documentation
  * - generate_diagram: Generate architecture diagram
  * - check_docs_freshness: Run an AST-backed source/document co-change guard
+ * - audit_documentation: Find Markdown references that no longer exist
  *
  * Usage:
  *   staledocs --mcp
@@ -75,6 +76,7 @@ import {
 } from "./update-workflow";
 import { MCP_INVALID_PREPARATION } from "./preparation-token";
 import { checkMCPDocumentationFreshness } from "./scoped-freshness";
+import { auditMCPDocumentation } from "./scoped-audit";
 
 const SAFE_MCP_ERROR_CODES = new Set<string>([
   ...PLAN_ERROR_CODES,
@@ -434,6 +436,25 @@ export const TOOLS: Tool[] = [
         },
       },
       required: ["directory"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "audit_documentation",
+    description:
+      "Audit Markdown in the repository where this MCP server started for package scripts, repository paths, and public class members that no longer exist. Read-only and deterministic; it does not fix anything.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        paths: {
+          type: "array",
+          items: { type: "string" },
+          minItems: 1,
+          maxItems: 64,
+          description:
+            "Repository-relative Markdown files to audit (default: discovered documentation and agent instruction files)",
+        },
+      },
       additionalProperties: false,
     },
   },
@@ -1063,6 +1084,23 @@ export async function handleToolCall(
       };
     }
 
+    case "audit_documentation": {
+      const auditArgs = readLegacyRecord(args, ["paths"]);
+      const context = await resolveMCPServerContext(
+        contextOrCwd,
+        legacyWorkflowContext,
+      );
+      return auditMCPDocumentation({
+        scope: context.scope,
+        serverCwd: context.serverCwd,
+        paths: auditArgs.paths,
+        planningConfig: await context.configLoader.loadPlanning(
+          context.scope.rootDirectory(),
+        ),
+        loadSuppressions: () => context.configLoader.loadSuppressions(),
+      });
+    }
+
     case "plan_documentation_impact": {
       const options = readMCPPlanOptions(args);
       const context = await resolveMCPServerContext(
@@ -1136,7 +1174,8 @@ export async function createMCPServer(
       };
       if (
         request.params.name === "prepare_documentation_update" ||
-        request.params.name === "validate_documentation_draft"
+        request.params.name === "validate_documentation_draft" ||
+        request.params.name === "audit_documentation"
       ) {
         return { ...response, structuredContent: result };
       }

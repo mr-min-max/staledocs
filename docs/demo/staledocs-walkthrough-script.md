@@ -25,7 +25,7 @@ Do not show a personal terminal, account details, or a private repository.
 
 ## 10-25s: two docs affected
 
-Show the changed function leading only to `README.md` and `docs/API.md`.
+Show the changed function leading only to the example's `README.md` and `API.md`.
 
 Say or caption: "StaleDocs analyzes the change first and narrows the documentation
 work to two files. It does not send an unbounded repository through this
@@ -47,7 +47,7 @@ Do not present the host-owned draft as an automatic StaleDocs write.
 
 ## 50-70s: draft validated
 
-Show the focused change in both `README.md` and `docs/API.md`:
+Show the focused change in both the example's `README.md` and `API.md`:
 
 ```diff
 - createUser(email)

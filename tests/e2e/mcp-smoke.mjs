@@ -272,6 +272,24 @@ async function runRepositoryIsolationRoundTrip(
     assert.ok(freshnessTool);
     assert.match(freshnessTool.description ?? "", /directly mention changed symbols/iu);
 
+    const audit = await callText(
+      localClient,
+      "audit_documentation",
+      {},
+      `${label} audit`,
+    );
+    assert.notEqual(audit.result.isError, true);
+    const auditReport = JSON.parse(audit.text);
+    assert.deepEqual(audit.result.structuredContent, auditReport);
+    assert.equal(auditReport.schema_version, "aidoc.audit.v1");
+    assert.deepEqual(auditReport.summary.byKind, {
+      "member-missing": 0,
+      "path-missing": 0,
+      "script-missing": 0,
+    });
+    assertResponseValueFree(audit.text, forbiddenValues, `${label} audit`);
+    await assertRepositoriesUnchanged(repositoryA, repositoryB, beforeA, beforeB);
+
     for (const directory of [".", "src"]) {
       const { result, text } = await callText(
         localClient,
