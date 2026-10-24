@@ -4,6 +4,19 @@
 
 StaleDocs maps changed public symbols to documentation sections. It does not prove that prose is correct, complete, or appropriate for readers.
 
+## What audit does not check
+
+`staledocs audit` reads Markdown from the working tree only, never from another
+revision. It does not check bare symbol names, command-line flags,
+configuration keys, prose, or generated paths under `dist/`, `build/`, `out/`,
+`coverage/`, and `node_modules/`. Links written as HTML or reference-style
+definitions, commands behind a shell prompt such as `$ npm test`, and text
+before a document's first heading are not read. A path that names a file in
+another repository, such as an example project's source file, is reported
+when no such file exists here; write such paths with a placeholder, as in
+`src/<name>.ts`. Scripts are read from `package.json` manifests only; a
+document under an unreadable manifest gets no script findings.
+
 ## Public boundary
 
 A public symbol is one that a consumer can import from the package entry. StaleDocs discovers entries from `package.json` (`exports`, then `types`, `module`, `main`; build paths such as `dist/<name>.js` are mapped to `src/<name>.ts` when that file exists) for the root package and one level of workspace packages, then follows static `export ... from` statements with relative specifiers. `export * as ns from` is followed one level. Bare specifiers, `require()`, dynamic `import()`, `tsconfig` path aliases, and CommonJS are not followed. Set `entry` in the configuration to override discovery. When no entry can be resolved, every export in a changed file is treated as public and the report says so.
