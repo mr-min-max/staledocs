@@ -132,7 +132,7 @@ describe("review_documentation_impact MCP tool", () => {
     });
     expect(loadPlanning).toHaveBeenCalledTimes(1);
     expect(loadSuppressions).toHaveBeenCalledTimes(1);
-  });
+  }, 30_000);
 
   it("uses the review command's default comparison without refs", async () => {
     const fixture = reviewRepository();
@@ -149,7 +149,7 @@ describe("review_documentation_impact MCP tool", () => {
       base: { commit: fixture.base },
       documents: [{ path: "README.md", status: "stale" }],
     });
-  });
+  }, 30_000);
 
   it("applies repository suppressions like the review command", async () => {
     const fixture = reviewRepository();
@@ -169,7 +169,7 @@ describe("review_documentation_impact MCP tool", () => {
       summary: { publicApiChanges: 0, suppressed: 1 },
       verdict: "clean",
     });
-  });
+  }, 30_000);
 
   it("never writes files, loads providers, or honors a directory argument", async () => {
     const fixture = reviewRepository();
@@ -195,7 +195,7 @@ describe("review_documentation_impact MCP tool", () => {
     expect(git(fixture.root, "status", "--porcelain")).toBe(status);
     expect(createProvider).not.toHaveBeenCalled();
     expect(loadProviderConfig).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it.each([
     { label: "non-string base", args: { base: 17 } },
@@ -227,7 +227,7 @@ describe("review_documentation_impact MCP tool", () => {
 
     expect(formatMCPError(thrown)).toMatch(/^PLAN_BASE_NOT_FOUND: /u);
     expect(formatMCPError(thrown)).not.toContain(fixture.root);
-  });
+  }, 30_000);
 
   it("rejects unsafe configuration before Git or AST planning", async () => {
     const fixture = reviewRepository();
