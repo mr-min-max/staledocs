@@ -60,7 +60,10 @@ All notable changes to this project are documented in this file.
   server-side preparation for its `target`, so hosts no longer relay the
   signed digest (#49). `preparation_digest` is optional; a supplied value must
   still be exact, and stale or changed targets still fail closed. Each server
-  keeps up to 32 targets, newest preparation per target.
+  keeps up to 32 targets, newest preparation per target. The plugins keep the
+  published `0.4.0-beta.1` pin until the release, and the
+  `maintain-documentation` skills pass the exact digest only when the server's
+  tool schema requires it, so they work with both versions.
 - Added: every MCP tool declares an output schema and returns its JSON result
   as `structuredContent` as well as text, including `plan_documentation_impact`
   and `check_docs_freshness`.

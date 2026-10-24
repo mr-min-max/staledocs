@@ -53,20 +53,46 @@ MCP tools the skills use:
 - `plan_documentation_impact`: affected documentation targets for a base and head.
 - `prepare_documentation_update`: bounded context and prompts for one target.
 - `validate_documentation_draft`: validate a candidate without writing files.
+- `review_documentation_impact`: the full review report. It is unreleased, so with
+  the pinned `0.4.0-beta.1` the review skill uses `plan_documentation_impact`.
 
 ## Safe update workflow
 
 1. `prepare_documentation_update` returns one target and the bounded prompts. When
    several targets are returned, you choose; Codex does not guess.
 2. Codex generates one complete Markdown candidate from only those prompts.
-3. `validate_documentation_draft` receives the target, the exact candidate, and the
-   preparation value passed as structured arguments from the previous result.
+3. `validate_documentation_draft` receives the target and the exact candidate. The
+   pinned `0.4.0-beta.1` also requires the exact `preparation_digest`, passed as a
+   structured argument from preparation. Do not copy it into text or retype it.
 4. Codex stops or prepares again if validation is invalid, stale, or blocked.
 5. When valid, Codex shows the approved diff and asks for its normal write
    permission, then applies only `approved_markdown` to that target.
 6. `check_docs_freshness` runs afterward on the target.
 
+Unreleased on `main`: the server keeps the newest preparation per target (up to 32),
+so validation needs only target and candidate; the plugin gets it with a release.
+
 A live fix-path check on 2026-09-12 with Codex CLI 0.149.0-alpha.4.1 produced a correct README candidate for a changed public TypeScript API. The first validation using the exact signed output of its preparation accepted that candidate with no warnings, and no repository file was written without permission. Two preliminary manual-transcription attempts failed closed and are tracked in issue #49.
+
+## Reproducing the fix-path check
+
+From a StaleDocs checkout with a signed-in Codex CLI:
+
+```bash
+npm ci && npm run build
+node scripts/codex-fix-path.mjs --runs 3 --evidence <evidence directory>
+```
+
+Per fixture in `scripts/codex-fix-path/fixtures/` and run, the script builds a
+temporary Git repository with a documented API change, confirms that StaleDocs
+reports it stale, and runs `codex exec` once in a read-only sandbox against this
+checkout's MCP server. Because `codex exec` cannot prompt, it approves only
+`prepare_documentation_update` and `validate_documentation_draft`. It uses your
+Codex sign-in and ChatGPT plan, needs no API key, and does not run in CI; `--runs`
+is 1 to 10, and `--codex <path>` names the CLI when it is not on `PATH`. The table
+counts, per fixture, runs whose first validation returned `valid: true`
+(`first_validate_ok`), whose validated Markdown names the change (`correct`), and
+that changed the fixture (`writes`; the script then exits non-zero).
 
 ## Repository scope and troubleshooting
 
