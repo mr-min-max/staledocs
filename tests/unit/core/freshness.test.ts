@@ -182,6 +182,47 @@ describe("assessDocumentationFreshness", () => {
     expect(report.status).toBe("stale");
   });
 
+  it.each([
+    ["implementation-changed", ["src/user.ts"]],
+    ["documentation-changed", ["src/user.ts", "README.md"]],
+  ] as const)("keeps a mentioned %s symbol clean", (category, changedFiles) => {
+    const report = assessDocumentationFreshness({
+      plan: mappedPlan(
+        [change({ category })],
+        "# Demo\n\n## API\n\n`createUser` creates a user.\n",
+      ),
+      changedFiles,
+      target: "README.md",
+      targetExists: true,
+    });
+
+    expect(report).toMatchObject({
+      status: "clean",
+      referencedSymbols: [],
+      sections: [],
+      unmappedSymbols: [],
+      sourceFiles: [],
+    });
+  });
+
+  it("reports an unmapped contract change but not an unmapped implementation-only change", () => {
+    const report = assessDocumentationFreshness({
+      plan: mappedPlan(
+        [
+          change({ id: "contract", qualifiedName: "renamed" }),
+          change({ id: "body", qualifiedName: "rewritten", category: "implementation-changed" }),
+        ],
+        "# Demo\n\n## API\n\nNo symbols here.\n",
+      ),
+      changedFiles: ["src/user.ts"],
+      target: "README.md",
+      targetExists: true,
+    });
+
+    expect(report.status).toBe("clean");
+    expect(report.unmappedSymbols).toEqual(["renamed"]);
+  });
+
   it("does not count recommendation-only mappings for a README target", () => {
     const report = assessDocumentationFreshness({
       plan: planFor(

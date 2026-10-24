@@ -102,7 +102,17 @@ try {
     join(repo, "src", "index.ts"),
     "export function api(): number { return 2; }\n",
   );
-  commit("fixture: source change");
+  commit("fixture: implementation-only change");
+  const implementationOnly = check("README.md", base);
+  assert.equal(implementationOnly.status, 0);
+  assert.equal(implementationOnly.report.status, "clean");
+  assert.deepEqual(implementationOnly.report.referencedSymbols, []);
+
+  writeFileSync(
+    join(repo, "src", "index.ts"),
+    'export function api(): string { return "2"; }\n',
+  );
+  commit("fixture: contract change");
   const stale = check("README.md", base);
   assert.equal(stale.status, 1);
   assert.equal(stale.report.status, "stale");
