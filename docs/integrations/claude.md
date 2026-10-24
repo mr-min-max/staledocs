@@ -51,6 +51,9 @@ Available skills:
   draft with the host model, validate it, and ask permission before applying
   only the approved Markdown.
 
+For a whole-repository pass, `/staledocs:check` calls the `audit_documentation`
+MCP tool when the server lists it (releases after `0.4.0-beta.1`).
+
 The plugin has no hooks or automatic writes. Start a new Claude Code session
 in the intended worktree when switching projects; an already-running MCP
 server does not follow later shell directory changes.
