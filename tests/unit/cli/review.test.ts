@@ -139,6 +139,53 @@ describe("review command", () => {
     expect(result.verdict).toBe("stale");
   });
 
+  it.each([
+    [
+      "an implementation-only change",
+      "export function createUser(email: string): string { return email.trim(); }\n",
+      undefined,
+    ],
+    [
+      "a documentation-only change with an edited document",
+      "/** Creates a user. */\nexport function createUser(email: string): string { return email; }\n",
+      "# API\n\n## API\n\n`createUser` creates a user.\n",
+    ],
+  ])("reports no document for %s of a documented symbol", async (_label, source, readme) => {
+    writeFileSync(join(root, "src", "user.ts"), source);
+    if (readme !== undefined) writeFileSync(join(root, "README.md"), readme);
+
+    const result = await createReviewReport({ base: "HEAD" }, root);
+
+    expect(result.changes).toEqual([]);
+    expect(result.documents).toEqual([]);
+    expect(result.summary).toMatchObject({
+      publicApiChanges: 0,
+      staleDocuments: 0,
+      coChangedDocuments: 0,
+    });
+    expect(result.verdict).toBe("clean");
+  });
+
+  it.each([
+    ["clean", "export function createUser(email: string): string { return email.trim(); }\n"],
+    ["stale", "export function createUser(email: number): number { return email; }\n"],
+    ["breaking", "export function createUser(email: string, role: string): string { return email; }\n"],
+  ])("derives the %s verdict, counts, and documents from the same changes", async (verdict, source) => {
+    writeFileSync(join(root, "src", "user.ts"), source);
+
+    const result = await createReviewReport({ base: "HEAD" }, root);
+
+    expect(result.verdict).toBe(verdict);
+    expect(result.verdict === "clean").toBe(
+      result.summary.breaking === 0 && result.summary.staleDocuments === 0,
+    );
+    expect(result.summary.publicApiChanges).toBe(result.changes.length);
+    expect(result.summary.staleDocuments).toBe(
+      result.documents.filter((document) => document.status === "stale").length,
+    );
+    expect(result.changes.length === 0 && result.documents.length > 0).toBe(false);
+  });
+
   it("hides internal changes from review counts and document findings", async () => {
     writeFileSync(join(root, "package.json"), '{"main":"dist/index.js"}\n');
     writeFileSync(
