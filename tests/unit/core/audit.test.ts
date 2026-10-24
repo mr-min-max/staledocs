@@ -137,6 +137,41 @@ describe("assessDocumentationAudit true positives", () => {
     ]);
   });
 
+  it("TP6 reports a member that a closed public class does not declare", () => {
+    expect(
+      audit(
+        { "README.md": "# Lib\n\n## API\n\nCall `Client.fetchAll`.\n" },
+        {
+          publicSymbols: new Map([
+            ["Client", { kind: "class", members: ["fetch"] }],
+          ]),
+        },
+      ).findings,
+    ).toEqual([
+      {
+        file: "README.md",
+        section: "API",
+        slug: "api",
+        kind: "member-missing",
+        value: "Client.fetchAll",
+        evidence: "code-span",
+      },
+    ]);
+  });
+
+  it("TP7 reports a missing member inside a fenced block in AGENTS.md", () => {
+    expect(
+      compact(
+        { "AGENTS.md": "# Agents\n\n```ts\nOptions.retries\n```\n" },
+        {
+          publicSymbols: new Map([
+            ["Options", { kind: "interface", members: ["timeout"] }],
+          ]),
+        },
+      ),
+    ).toEqual([["AGENTS.md", "member-missing", "Options.retries"]]);
+  });
+
   it("checks package documents against root and package scripts", () => {
     const scripts = new Map<string, readonly string[] | null>([
       [".", ["build"]],
@@ -272,19 +307,49 @@ describe("assessDocumentationAudit false positives", () => {
     ).toEqual([]);
   });
 
+  it("FP4 ignores declared members, lowercase receivers, short roots, and unknown roots", () => {
+    expect(
+      compact(
+        {
+          "README.md": [
+            "# Lib",
+            "",
+            "`Client.fetch` `client.fetch(url)` `Client.fetch(url)` `Ky.get`",
+            "`Foo.bar` `Client.fetchAll()` `Client.fetch.all`",
+            "",
+          ].join("\n"),
+        },
+        {
+          publicSymbols: new Map([
+            ["Client", { kind: "class", members: ["fetch"] }],
+            ["Ky", { kind: "class", members: ["post"] }],
+          ]),
+        },
+      ),
+    ).toEqual([]);
+  });
+
   it("FP5 skips changelog-style files entirely", () => {
     const stale = [
       "# Changelog",
       "",
       "Run `npm run bulid`, see [guide](./docs/guide.md) and `src/core/old.ts`.",
+      "Call `Client.fetchAll`.",
       "",
     ].join("\n");
     expect(
-      compact({
-        "CHANGELOG.md": stale,
-        "docs/HISTORY.md": stale,
-        "RELEASES.md": stale,
-      }),
+      compact(
+        {
+          "CHANGELOG.md": stale,
+          "docs/HISTORY.md": stale,
+          "RELEASES.md": stale,
+        },
+        {
+          publicSymbols: new Map([
+            ["Client", { kind: "class", members: ["fetch"] }],
+          ]),
+        },
+      ),
     ).toEqual([]);
   });
 

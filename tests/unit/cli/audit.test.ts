@@ -159,6 +159,71 @@ describe("audit command", () => {
     ]);
   });
 
+  it("reports only members that a closed public TypeScript type does not declare", async () => {
+    write(
+      root,
+      "package.json",
+      '{"name":"lib","main":"src/index.ts","scripts":{"build":"tsc","test":"jest"}}\n',
+    );
+    write(
+      root,
+      "src/index.ts",
+      [
+        'export { Client, Child, Indexed, Merged } from "./client";',
+        'export { Legacy } from "./legacy.js";',
+        "",
+      ].join("\n"),
+    );
+    write(
+      root,
+      "src/client.ts",
+      [
+        "class Base { inherited(): void {} }",
+        "export class Client {",
+        "  static create(): Client { return new Client(1); }",
+        "  baseUrl = '';",
+        "  private secret(): void {}",
+        "  get size(): number { return 0; }",
+        "  set size(value: number) {}",
+        "  constructor(public readonly timeout: number) {}",
+        "  fetch(url: string): string { return url; }",
+        "}",
+        "export class Child extends Base {}",
+        "export interface Indexed { [key: string]: number }",
+        "export interface Merged { first: number }",
+        "export interface Merged { second: number }",
+        "export class Hidden { run(): void {} }",
+        "",
+      ].join("\n"),
+    );
+    write(
+      root,
+      "src/legacy.js",
+      "export class Legacy {\n  constructor() { this.cache = {}; }\n}\n",
+    );
+    write(
+      root,
+      "README.md",
+      [
+        "# Lib",
+        "",
+        "## API",
+        "",
+        "`Client.fetchAll` `Client.fetch` `Client.baseUrl` `Client.size`",
+        "`Client.timeout` `Client.secret` `Client.create` `Child.inherited`",
+        "`Child.missing` `Indexed.anything` `Merged.third` `Legacy.cache`",
+        "`Legacy.missing` `Hidden.missing`",
+        "",
+      ].join("\n"),
+    );
+    write(root, "AGENTS.md", "# Agents\n\nRun `npm test`.\n");
+    const output = io();
+    await executeAuditCommand({ json: true }, output, root);
+    expect(findingsOf(output)).toEqual([
+      ["README.md", "member-missing", "Client.fetchAll"],
+    ]);
+  });
+
   it("limits the audit to named documents", async () => {
     const output = io();
     await executeAuditCommand({ json: true, path: ["./AGENTS.md"] }, output, root);
