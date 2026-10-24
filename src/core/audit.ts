@@ -1,9 +1,25 @@
 import { posix } from "node:path";
 import {
+  loadPlanningConfig,
+  parsePlanningConfig,
+  type PlanningConfig,
+} from "../config/planning";
+import {
+  loadSuppressions,
+  matchingSuppression,
+  type SuppressionConfig,
+} from "../config/suppressions";
+import { GitSnapshotReader } from "../git/snapshot";
+import {
   isChangelogDocument,
   scanDocumentationEvidence,
   type DocumentationFile,
 } from "../impact/documentation";
+import {
+  discoverDocumentationFiles,
+  readDocumentationFiles,
+} from "../impact/planner";
+import { PlanFailure } from "../impact/types";
 import { sanitizeDiagnostic } from "../security/scanner";
 
 export const AUDIT_SCHEMA_VERSION = "aidoc.audit.v1" as const;
@@ -49,6 +65,21 @@ export interface AuditInput {
   revision?: string;
   documentationLimitReached?: boolean;
 }
+
+export interface AuditOptions {
+  cwd?: string;
+  /** Repository-relative Markdown files to audit instead of discovery. */
+  paths?: readonly string[];
+  readonly planningConfig?: Readonly<PlanningConfig>;
+  readonly suppressions?: Readonly<SuppressionConfig>;
+}
+
+/** Files coding agents read first; audited even outside discovered directories. */
+export const AGENT_INSTRUCTION_FILES = Object.freeze([
+  "AGENTS.md",
+  "CLAUDE.md",
+  ".github/copilot-instructions.md",
+]);
 
 const SCRIPT_INVOCATION =
   /^(npm|pnpm|yarn|bun)\s+(?:(run)\s+)?([A-Za-z0-9:_.-]+)/u;
@@ -135,6 +166,62 @@ const KIND_ORDER: readonly AuditFindingKind[] = [
   "path-missing",
   "script-missing",
 ];
+
+/**
+ * Audits the working tree's Markdown against its tree listing and package
+ * scripts. Deterministic and AST-only; no provider is constructed.
+ */
+export async function auditRepository(
+  options: AuditOptions = {},
+): Promise<AuditReport> {
+  const cwd = options.cwd ?? process.cwd();
+  let config: PlanningConfig;
+  try {
+    config =
+      options.planningConfig === undefined
+        ? loadPlanningConfig(cwd)
+        : parsePlanningConfig(options.planningConfig);
+  } catch {
+    throw new PlanFailure(
+      "PLAN_SOURCE_READ_FAILED",
+      "Unable to read planning configuration.",
+    );
+  }
+  const reader = new GitSnapshotReader(cwd);
+  const { root } = await reader.openWorkingTree();
+  const [tree, manifests, pythonEntries] = await Promise.all([
+    reader.listTree("head"),
+    reader.listPackageManifests("head"),
+    reader.listPythonPackageEntries("head"),
+  ]);
+  const scripts = await readPackageScripts(reader, manifests);
+  let documentation;
+  if (options.paths === undefined) {
+    const suppressions =
+      options.suppressions ?? (await loadSuppressions(root));
+    const discovery = await discoverDocumentationFiles(root, config, {
+      packageDirectories: [...manifests, ...pythonEntries].map((path) =>
+        posix.dirname(path),
+      ),
+      extraFiles: AGENT_INSTRUCTION_FILES,
+    });
+    documentation = {
+      files: discovery.files.filter(
+        (file) =>
+          matchingSuppression(file.path, suppressions.docPaths) === undefined,
+      ),
+      limitReached: discovery.limitReached,
+    };
+  } else {
+    documentation = await readDocumentationFiles(root, options.paths);
+  }
+  return assessDocumentationAudit({
+    tree,
+    scripts,
+    docs: documentation.files,
+    documentationLimitReached: documentation.limitReached,
+  });
+}
 
 /** Audits Markdown references against one repository revision without a diff. */
 export function assessDocumentationAudit(input: AuditInput): AuditReport {
@@ -249,6 +336,50 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
     findings: sorted.slice(0, AUDIT_FINDING_LIMIT),
     ...(Object.keys(ignored).length === 0 ? {} : { ignored }),
   };
+}
+
+async function readPackageScripts(
+  reader: GitSnapshotReader,
+  manifests: readonly string[],
+): Promise<Map<string, readonly string[] | null>> {
+  const scripts = new Map<string, readonly string[] | null>();
+  for (const manifest of manifests) {
+    scripts.set(
+      posix.dirname(manifest),
+      await readManifestScripts(reader, manifest),
+    );
+  }
+  return scripts;
+}
+
+async function readManifestScripts(
+  reader: GitSnapshotReader,
+  manifest: string,
+): Promise<readonly string[] | null> {
+  let parsed: unknown;
+  try {
+    const source = await reader.readAt("head", manifest);
+    if (source === undefined) return null;
+    parsed = JSON.parse(source);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return null;
+  }
+  const declared = (parsed as Record<string, unknown>).scripts;
+  if (declared === undefined) return [];
+  if (
+    typeof declared !== "object" ||
+    declared === null ||
+    Array.isArray(declared)
+  ) {
+    return null;
+  }
+  return Object.entries(declared)
+    .filter(([, command]) => typeof command === "string")
+    .map(([name]) => name)
+    .sort(compareStrings);
 }
 
 interface TreeIndex {
