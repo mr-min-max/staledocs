@@ -55,8 +55,7 @@ MCP tools the skills use:
 - `plan_documentation_impact`: affected documentation targets for a base and head.
 - `prepare_documentation_update`: bounded context and prompts for one target.
 - `validate_documentation_draft`: validate a candidate without writing files.
-- `review_documentation_impact`: the full review report (releases after
-  `0.4.0-beta.1`; until then the review skill uses `plan_documentation_impact`).
+- `review_documentation_impact`: the full review report (releases after `0.4.0-beta.1`).
 
 ## Safe update workflow
 
@@ -72,8 +71,6 @@ MCP tools the skills use:
    permission, then applies only `approved_markdown` to that target.
 6. `check_docs_freshness` runs afterward on the target.
 
-A live fix-path check on 2026-09-12 with Codex CLI 0.149.0-alpha.4.1 produced a correct README candidate for a changed public TypeScript API. The first validation using the exact signed output of its preparation accepted that candidate with no warnings, and no repository file was written without permission. Two preliminary manual-transcription attempts failed closed and are tracked in issue #49.
-
 ## Reproducing the fix-path check
 
 From a StaleDocs checkout with a signed-in Codex CLI:
@@ -84,15 +81,18 @@ node scripts/codex-fix-path.mjs --runs 3 --evidence <evidence directory>
 ```
 
 Per fixture in `scripts/codex-fix-path/fixtures/` and run, the script builds a
-temporary Git repository with a documented API change, confirms that StaleDocs
-reports it stale, and runs `codex exec` once in a read-only sandbox against this
-checkout's MCP server. Because `codex exec` cannot prompt, it approves only
-`prepare_documentation_update` and `validate_documentation_draft`. It uses your
-Codex sign-in and ChatGPT plan, needs no API key, and does not run in CI; `--runs`
-is 1 to 10, and `--codex <path>` names the CLI when it is not on `PATH`. The table
-counts, per fixture, runs whose first validation returned `valid: true`
-(`first_validate_ok`), whose validated Markdown names the change (`correct`), and
-that changed the fixture (`writes`; the script then exits non-zero).
+temporary Git repository with a documented API change and runs `codex exec` once in
+a read-only sandbox against this checkout's MCP server, approving only the prepare
+and validate tools because `codex exec` cannot prompt. It uses your Codex sign-in
+and ChatGPT plan, needs no API key, and does not run in CI. `writes` counts runs
+that changed the fixture; the script then exits non-zero.
+
+On 2026-10-24, Codex CLI 0.163.0-alpha.10.2 with this repository's unreleased server validated on the first attempt in 6 of 6 runs: each run called `prepare_documentation_update`, then `validate_documentation_draft` with only the target and the candidate; the validated Markdown named the changed parameter (`correct`), and no fixture file changed. Earlier digest transcription failures are tracked in issue #49.
+
+| Fixture     | Runs | first_validate_ok | correct | writes | median seconds |
+| ----------- | ---- | ----------------- | ------- | ------ | -------------- |
+| ts-function | 3    | 3/3               | 3/3     | 0/3    | 16.6           |
+| ts-method   | 3    | 3/3               | 3/3     | 0/3    | 16.3           |
 
 ## Repository scope and troubleshooting
 
