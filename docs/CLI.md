@@ -302,8 +302,11 @@ and the target was not modified in the selected Git range. It does not compare
 generated prose, so a co-change does not prove content correctness.
 
 Recommendations (such as an API or changelog suggestion) are not direct
-evidence. Unmapped symbols do not fail the check, and implementation-only
-changes fail only when the changed symbol is directly mentioned in the target.
+evidence, and unmapped symbols do not fail the check. A document is stale when
+it mentions a public symbol whose signature, kind, or public visibility changed
+in the comparison and the document was not modified. Changes inside a function
+body do not make a document stale. An implementation-only or doc-comment-only
+change of a mentioned symbol therefore reports `clean` and exits 0.
 
 ```bash
 staledocs check
@@ -342,6 +345,13 @@ Reviews the current pull request range with deterministic AST analysis. Review m
 reports only the drift this pull request introduces; pre-existing stale documentation is not reported.
 It does not use a model, API key, or repository write. With no explicit `--head`,
 the working tree is compared with the selected base.
+
+A document is stale when it mentions a public symbol whose signature, kind, or
+public visibility changed in the comparison and the document was not modified.
+Changes inside a function body do not make a document stale. The verdict, the
+counts, the listed changes, and the documents come from the same set of public
+API changes, so a report without public API changes lists no documents and its
+verdict is `clean`.
 
 ```bash
 staledocs review

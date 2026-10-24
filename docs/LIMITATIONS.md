@@ -4,6 +4,8 @@
 
 StaleDocs maps changed public symbols to documentation sections. It does not prove that prose is correct, complete, or appropriate for readers.
 
+Behavioral changes that keep the signature (a function returning different values for the same inputs) are not detected; documentation describing such behavior is not reported.
+
 ## What audit does not check
 
 `staledocs audit` reads Markdown from the working tree only, never from another

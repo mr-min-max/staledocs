@@ -85,6 +85,14 @@ All notable changes to this project are documented in this file.
 - Added: `scripts/codex-fix-path.mjs` runs the MCP fix path through
   `codex exec` on fixture repositories and reports first-attempt validation,
   correctness, and repository writes per fixture.
+- Changed: `staledocs review` and `staledocs check` report a document as stale
+  only when a public symbol it mentions changed its signature, kind, or public
+  visibility. Changes inside a function body or a doc comment no longer make a
+  document stale or co-changed, so `check` now exits 0 for an
+  implementation-only change of a mentioned symbol (it exited 1). The review
+  verdict, counts, and rendered text come from the same public API changes and
+  no longer disagree. The `review_documentation_impact` and
+  `check_docs_freshness` MCP tools follow the same rule.
 
 ## [0.4.0-beta.1] - 2026-09-12
 

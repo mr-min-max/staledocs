@@ -87,6 +87,11 @@ so first-time adopters see the `Updated in this PR` confirmation. A report that
 contains only not-analyzed files is visible in the job summary and logs but does
 not create a pull request comment.
 
+A document is stale when it mentions a public symbol whose signature, kind, or
+public visibility changed in the comparison and the document was not modified.
+Changes inside a function body do not make a document stale, so they do not add
+`docs-stale` or fail `fail-on: stale`.
+
 Labels use the following stable metadata:
 
 - `docs-stale`, color `e4e669`, description `Documentation sections mentioning changed public symbols are stale`;
