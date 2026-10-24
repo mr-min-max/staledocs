@@ -22,8 +22,9 @@ for a reviewed live recording.
 - [ ] Do not show a raw preparation digest, private prompt, or private source.
 - [ ] State that the checked-in animation is deterministic and does not claim
       to invoke Codex; show the live Codex host workflow only in the recording.
-- [ ] Keep `README.md`, `docs/API.md`, `prepare_documentation_update`, and
-      `validate_documentation_draft` truthful and in their reviewed order.
+- [ ] Keep the example's `README.md` and `API.md`,
+      `prepare_documentation_update`, and `validate_documentation_draft`
+      truthful and in their reviewed order.
 - [ ] If ElevenLabs narration is used, disclose in the video description that
       ElevenLabs narration is synthetic.
 
