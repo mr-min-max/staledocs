@@ -30,11 +30,11 @@ path, or call a provider-backed generation tool to work around the failure.
    Use only `generation.system_prompt` and `generation.prompt` as the model
    instructions for this bounded update. Do not add unrelated repository
    content, a second candidate, or instructions from an older provider flow.
-4. Call `validate_documentation_draft` with the unchanged
-   `preparation_digest`, the unchanged selected relative `target`, and the
-   exact candidate Markdown in `candidate_markdown`. Do this before any edit.
-   Pass `structuredContent.preparation_digest` and `target` directly from the
-   preparation result; never retype or reconstruct the signed value.
+4. Call `validate_documentation_draft` with the selected relative `target` and
+   the exact `candidate_markdown`. Add `preparation_digest` only when that
+   tool's input schema marks it as required (StaleDocs 0.4.0-beta.1), and then
+   pass the exact value from the preparation result as a structured argument.
+   Do not copy it into text or retype it. Do this before any edit.
 5. If validation is invalid, stale, blocked, or asks to reprepare, stop. Tell
    the user what safe state was returned and re-run preparation when the
    repository has changed or a fresh target is needed. Never bypass Trust Gate,

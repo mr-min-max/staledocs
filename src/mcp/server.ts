@@ -28,6 +28,7 @@ import {
   type PlanErrorCode,
 } from "../impact/types";
 import { readPackageVersion } from "../core/package-meta";
+import { buildReviewReport } from "../core/review";
 import { resolveTemplatesDir } from "../core/templates";
 import {
   ProviderConfigurationError,
@@ -237,20 +238,25 @@ function invalidMCPContextBudget(): PlanFailure {
   );
 }
 
+function readMCPRefOptions(args: unknown): { base?: string; head?: string } {
+  const base = readOwnMCPArgument(args, "base", invalidMCPRef);
+  const head = readOwnMCPArgument(args, "head", invalidMCPRef);
+  if (base !== undefined && typeof base !== "string") throw invalidMCPRef();
+  if (head !== undefined && typeof head !== "string") throw invalidMCPRef();
+  return { base, head };
+}
+
 function readMCPPlanOptions(args: unknown): {
   base?: string;
   head?: string;
   maxContextBytes?: number;
 } {
-  const base = readOwnMCPArgument(args, "base", invalidMCPRef);
-  const head = readOwnMCPArgument(args, "head", invalidMCPRef);
+  const { base, head } = readMCPRefOptions(args);
   const maxContextBytes = readOwnMCPArgument(
     args,
     "max_context_bytes",
     invalidMCPContextBudget,
   );
-  if (base !== undefined && typeof base !== "string") throw invalidMCPRef();
-  if (head !== undefined && typeof head !== "string") throw invalidMCPRef();
   if (
     maxContextBytes !== undefined &&
     (typeof maxContextBytes !== "number" ||
@@ -359,6 +365,7 @@ export const TOOLS: Tool[] = [
       required: ["directory"],
       additionalProperties: false,
     },
+    outputSchema: analysisSchema(),
   },
   {
     name: "generate_readme",
@@ -376,6 +383,7 @@ export const TOOLS: Tool[] = [
       required: ["directory"],
       additionalProperties: false,
     },
+    outputSchema: generatedContentSchema(),
   },
   {
     name: "generate_api_docs",
@@ -393,6 +401,7 @@ export const TOOLS: Tool[] = [
       required: ["directory"],
       additionalProperties: false,
     },
+    outputSchema: generatedContentSchema(),
   },
   {
     name: "generate_diagram",
@@ -410,6 +419,7 @@ export const TOOLS: Tool[] = [
       required: ["directory"],
       additionalProperties: false,
     },
+    outputSchema: generatedContentSchema(),
   },
   {
     name: "check_docs_freshness",
@@ -436,6 +446,7 @@ export const TOOLS: Tool[] = [
       required: ["directory"],
       additionalProperties: false,
     },
+    outputSchema: freshnessReportSchema(),
   },
   {
     name: "plan_documentation_impact",
@@ -461,6 +472,7 @@ export const TOOLS: Tool[] = [
       },
       additionalProperties: false,
     },
+    outputSchema: impactPlanSchema(),
   },
   {
     name: "prepare_documentation_update",
@@ -517,7 +529,7 @@ export const TOOLS: Tool[] = [
   {
     name: "validate_documentation_draft",
     description:
-      "Validate a host-generated Markdown draft against a signed repository-scoped preparation without writing files.",
+      "Validate a host-generated Markdown draft against the latest server-side preparation for the target, without writing files. preparation_digest is optional and, when present, must be the exact value returned by prepare_documentation_update.",
     inputSchema: {
       type: "object",
       properties: {
@@ -525,7 +537,7 @@ export const TOOLS: Tool[] = [
         target: { type: "string" },
         candidate_markdown: { type: "string" },
       },
-      required: ["preparation_digest", "target", "candidate_markdown"],
+      required: ["target", "candidate_markdown"],
       additionalProperties: false,
     },
     outputSchema: {
@@ -553,7 +565,426 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "review_documentation_impact",
+    description:
+      "Return the deterministic documentation-impact review for a base and head revision without writing files.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        base: {
+          type: "string",
+          description:
+            "Comparison base Git ref (default: the review command's base discovery)",
+        },
+        head: {
+          type: "string",
+          description: "Comparison head Git ref (default: the working tree)",
+        },
+      },
+      additionalProperties: false,
+    },
+    outputSchema: reviewReportSchema(),
+  },
 ];
+
+// Result schemas below mirror the existing v1 payloads. Their objects stay open
+// and their strings unenumerated so additive v1 fields and values stay valid.
+
+type ToolOutputSchema = NonNullable<Tool["outputSchema"]>;
+
+function stringArraySchema(): object {
+  return { type: "array", items: { type: "string" } };
+}
+
+function analysisSchema(): ToolOutputSchema {
+  return {
+    type: "object",
+    properties: {
+      totalModules: { type: "integer" },
+      totalFunctions: { type: "integer" },
+      totalClasses: { type: "integer" },
+      totalTypes: { type: "integer" },
+      modules: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            filePath: { type: "string" },
+            language: { type: "string" },
+            functions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  signature: { type: "string" },
+                  returnType: { type: "string" },
+                  isAsync: { type: "boolean" },
+                  hasDoc: { type: "boolean" },
+                },
+                required: ["name", "signature", "isAsync", "hasDoc"],
+              },
+            },
+            classes: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  extends: { type: "string" },
+                  implements: stringArraySchema(),
+                  methodCount: { type: "integer" },
+                  hasDoc: { type: "boolean" },
+                },
+                required: ["name", "implements", "methodCount", "hasDoc"],
+              },
+            },
+            types: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  kind: { type: "string" },
+                },
+                required: ["name", "kind"],
+              },
+            },
+          },
+          required: ["filePath", "language", "functions", "classes", "types"],
+        },
+      },
+    },
+    required: [
+      "totalModules",
+      "totalFunctions",
+      "totalClasses",
+      "totalTypes",
+      "modules",
+    ],
+  };
+}
+
+function generatedContentSchema(): ToolOutputSchema {
+  return {
+    type: "object",
+    properties: {
+      content: { type: "string" },
+      format: { type: "string" },
+    },
+    required: ["content", "format"],
+  };
+}
+
+function documentSectionSchema(): object {
+  return {
+    type: "object",
+    properties: {
+      section: { type: "string" },
+      slug: { type: "string" },
+      symbols: stringArraySchema(),
+    },
+    required: ["section", "slug", "symbols"],
+  };
+}
+
+function freshnessReportSchema(): ToolOutputSchema {
+  return {
+    type: "object",
+    properties: {
+      status: { type: "string" },
+      target: { type: "string" },
+      targetChanged: { type: "boolean" },
+      referencedSymbols: stringArraySchema(),
+      sections: { type: "array", items: documentSectionSchema() },
+      unmappedSymbols: stringArraySchema(),
+      sourceFiles: stringArraySchema(),
+      message: { type: "string" },
+      recommendation: { type: ["string", "null"] },
+    },
+    required: [
+      "status",
+      "target",
+      "targetChanged",
+      "referencedSymbols",
+      "sections",
+      "unmappedSymbols",
+      "sourceFiles",
+      "message",
+      "recommendation",
+    ],
+  };
+}
+
+function snapshotSchema(): object {
+  return {
+    type: "object",
+    properties: {
+      type: { type: "string" },
+      label: { type: "string" },
+      commit: { type: "string" },
+    },
+    required: ["type", "label"],
+  };
+}
+
+function boundarySchema(): object {
+  const language = {
+    type: "object",
+    properties: {
+      mode: { type: "string" },
+      entries: stringArraySchema(),
+      reason: { type: "string" },
+      filesRead: { type: "integer" },
+    },
+    required: ["mode", "entries", "filesRead"],
+  };
+  return {
+    type: "object",
+    properties: { typescript: language, python: language },
+  };
+}
+
+function notAnalyzedSchema(): object {
+  return {
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        path: { type: "string" },
+        reason: { type: "string" },
+      },
+      required: ["path", "reason"],
+    },
+  };
+}
+
+function documentationReferenceSchema(): object {
+  return {
+    type: "object",
+    properties: {
+      file: { type: "string" },
+      section: { type: "string" },
+      slug: { type: "string" },
+      reason: { type: "string" },
+    },
+    required: ["file", "section", "slug", "reason"],
+  };
+}
+
+function impactPlanSchema(): ToolOutputSchema {
+  return {
+    type: "object",
+    properties: {
+      schemaVersion: { type: "string", const: "aidoc.impact-plan.v1" },
+      base: snapshotSchema(),
+      head: snapshotSchema(),
+      summary: {
+        type: "object",
+        properties: {
+          totalChanges: { type: "integer" },
+          publicApiChanges: { type: "integer" },
+          potentiallyBreaking: { type: "integer" },
+          reviewRequired: { type: "integer" },
+          informational: { type: "integer" },
+          unmapped: { type: "integer" },
+          byCategory: {
+            type: "object",
+            additionalProperties: { type: "integer" },
+          },
+          internalChanges: { type: "integer" },
+        },
+        required: [
+          "totalChanges",
+          "publicApiChanges",
+          "potentiallyBreaking",
+          "reviewRequired",
+          "informational",
+          "unmapped",
+          "byCategory",
+        ],
+      },
+      changes: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            scope: { type: "string" },
+            id: { type: "string" },
+            beforeId: { type: "string" },
+            afterId: { type: "string" },
+            category: { type: "string" },
+            risk: { type: "string" },
+            language: { type: "string" },
+            path: { type: "string" },
+            kind: { type: "string" },
+            qualifiedName: { type: "string" },
+            changedContractFacets: stringArraySchema(),
+            before: { type: "string" },
+            after: { type: "string" },
+            arity: {
+              type: "object",
+              properties: {
+                required: { type: "integer" },
+                total: { type: "integer" },
+              },
+              required: ["required", "total"],
+            },
+            visibility: { type: "string" },
+            digest: { type: "string" },
+          },
+          required: [
+            "scope",
+            "id",
+            "category",
+            "risk",
+            "language",
+            "path",
+            "kind",
+            "digest",
+          ],
+        },
+      },
+      documentation: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            changeId: { type: "string" },
+            directReferences: {
+              type: "array",
+              items: documentationReferenceSchema(),
+            },
+            recommendations: {
+              type: "array",
+              items: documentationReferenceSchema(),
+            },
+            unmapped: { type: "boolean" },
+          },
+          required: [
+            "changeId",
+            "directReferences",
+            "recommendations",
+            "unmapped",
+          ],
+        },
+      },
+      context: contextBudgetSchema(),
+      ignored: {
+        type: "object",
+        properties: {
+          unsupported: { type: "integer" },
+          excluded: { type: "integer" },
+          suppressed: { type: "integer" },
+          notAnalyzed: notAnalyzedSchema(),
+          documentationLimitReached: { type: "boolean" },
+        },
+        required: ["unsupported", "excluded", "suppressed"],
+      },
+      boundary: boundarySchema(),
+      digest: { type: "string" },
+    },
+    required: [
+      "schemaVersion",
+      "base",
+      "head",
+      "summary",
+      "changes",
+      "documentation",
+      "context",
+      "ignored",
+      "digest",
+    ],
+  };
+}
+
+function reviewReportSchema(): ToolOutputSchema {
+  return {
+    type: "object",
+    properties: {
+      schemaVersion: { type: "string", const: "aidoc.review.v1" },
+      base: snapshotSchema(),
+      head: snapshotSchema(),
+      summary: {
+        type: "object",
+        properties: {
+          publicApiChanges: { type: "integer" },
+          breaking: { type: "integer" },
+          staleDocuments: { type: "integer" },
+          coChangedDocuments: { type: "integer" },
+          unmappedSymbols: { type: "integer" },
+          suppressed: { type: "integer" },
+          internalChanges: { type: "integer" },
+        },
+        required: [
+          "publicApiChanges",
+          "breaking",
+          "staleDocuments",
+          "coChangedDocuments",
+          "unmappedSymbols",
+          "suppressed",
+        ],
+      },
+      changes: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            qualifiedName: { type: "string" },
+            kind: { type: "string" },
+            category: { type: "string" },
+            risk: { type: "string" },
+            path: { type: "string" },
+            before: { type: "string" },
+            after: { type: "string" },
+            changedContractFacets: stringArraySchema(),
+          },
+          required: ["id", "qualifiedName", "kind", "category", "risk", "path"],
+        },
+      },
+      documents: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            path: { type: "string" },
+            status: { type: "string" },
+            sections: { type: "array", items: documentSectionSchema() },
+          },
+          required: ["path", "status", "sections"],
+        },
+      },
+      unmapped: stringArraySchema(),
+      suppressed: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            symbol: { type: "string" },
+            reason: { type: "string" },
+          },
+          required: ["symbol"],
+        },
+      },
+      notAnalyzed: notAnalyzedSchema(),
+      boundary: boundarySchema(),
+      verdict: { type: "string" },
+    },
+    required: [
+      "schemaVersion",
+      "base",
+      "head",
+      "summary",
+      "changes",
+      "documents",
+      "unmapped",
+      "suppressed",
+      "verdict",
+    ],
+  };
+}
 
 function contextBudgetSchema(): object {
   return {
@@ -1083,6 +1514,26 @@ export async function handleToolCall(
       return result.plan;
     }
 
+    case "review_documentation_impact": {
+      const options = readMCPRefOptions(args);
+      const context = await resolveMCPServerContext(
+        contextOrCwd,
+        legacyWorkflowContext,
+      );
+      const root = context.scope.rootDirectory();
+      return buildReviewReport(
+        {
+          base: options.base,
+          head: options.head,
+          planningConfig: await context.configLoader.loadPlanning(root),
+          suppressions: await context.configLoader.loadSuppressions(),
+          changedFiles: (fromRef, toRef) =>
+            context.scope.changedFiles(root, fromRef, toRef),
+        },
+        context.serverCwd,
+      );
+    }
+
     case "prepare_documentation_update": {
       const context = await resolveMCPServerContext(
         contextOrCwd,
@@ -1126,21 +1577,15 @@ export async function createMCPServer(
         request.params.arguments ?? {},
         context,
       );
-      const response = {
+      return {
         content: [
           {
             type: "text" as const,
             text: JSON.stringify(result, null, 2),
           },
         ],
+        structuredContent: result as Record<string, unknown>,
       };
-      if (
-        request.params.name === "prepare_documentation_update" ||
-        request.params.name === "validate_documentation_draft"
-      ) {
-        return { ...response, structuredContent: result };
-      }
-      return response;
     } catch (error: unknown) {
       return {
         isError: true,

@@ -133,6 +133,23 @@ async function runProviderFreeRoundTrip(
       listed.tools.some((tool) => tool.name === "validate_documentation_draft"),
     );
 
+    const unpreparedResult = await withTimeout(
+      localClient.callTool({
+        name: "validate_documentation_draft",
+        arguments: {
+          target: "README.md",
+          candidate_markdown: "# MCP fixture\n",
+        },
+      }),
+      `${label} unprepared validation`,
+    );
+    assert.equal(unpreparedResult.isError, true);
+    const unpreparedText = unpreparedResult.content.find(
+      (item) => item.type === "text",
+    );
+    assert.ok(unpreparedText && "text" in unpreparedText);
+    assert.match(unpreparedText.text, /^MCP_INVALID_PREPARATION:/u);
+
     const preparationResult = await withTimeout(
       localClient.callTool({
         name: "prepare_documentation_update",
@@ -146,6 +163,7 @@ async function runProviderFreeRoundTrip(
     );
     assert.ok(preparationText && "text" in preparationText);
     const preparation = JSON.parse(preparationText.text);
+    assert.deepEqual(preparationResult.structuredContent, preparation);
     assert.equal(preparation.schema_version, "aidoc.mcp-update-preparation.v1");
     assert.equal(preparation.target, "README.md");
     assert.match(preparation.preparation_digest, /^v1\./u);
@@ -162,7 +180,6 @@ async function runProviderFreeRoundTrip(
       localClient.callTool({
         name: "validate_documentation_draft",
         arguments: {
-          preparation_digest: preparation.preparation_digest,
           target: preparation.target,
           candidate_markdown: candidate,
         },
@@ -175,6 +192,7 @@ async function runProviderFreeRoundTrip(
     );
     assert.ok(validationText && "text" in validationText);
     const validation = JSON.parse(validationText.text);
+    assert.deepEqual(validationResult.structuredContent, validation);
     assert.equal(validation.schema_version, "aidoc.mcp-draft-validation.v1");
     assert.equal(validation.valid, true);
     assert.equal(validation.approved_markdown, candidate);
@@ -266,6 +284,10 @@ async function runRepositoryIsolationRoundTrip(
     assert.ok(
       listed.tools.some((tool) => tool.name === "plan_documentation_impact"),
     );
+    assert.ok(
+      listed.tools.some((tool) => tool.name === "review_documentation_impact"),
+    );
+    assert.ok(listed.tools.every((tool) => tool.outputSchema !== undefined));
     const freshnessTool = listed.tools.find(
       (tool) => tool.name === "check_docs_freshness",
     );
@@ -281,6 +303,7 @@ async function runRepositoryIsolationRoundTrip(
       );
       assert.notEqual(result.isError, true);
       const payload = JSON.parse(text);
+      assert.deepEqual(result.structuredContent, payload);
       assert.ok(payload.totalModules >= 1);
       assert.deepEqual(
         payload.modules.map((module) => module.filePath),
@@ -367,6 +390,7 @@ async function runRepositoryIsolationRoundTrip(
     );
     assert.notEqual(impact.result.isError, true);
     assert.deepEqual(JSON.parse(impact.text), cliPlanResult.plan);
+    assert.deepEqual(impact.result.structuredContent, cliPlanResult.plan);
     assertResponseValueFree(
       impact.text,
       forbiddenValues,
@@ -387,10 +411,46 @@ async function runRepositoryIsolationRoundTrip(
     );
     assert.notEqual(freshness.result.isError, true);
     assert.equal(JSON.parse(freshness.text).status, "stale");
+    assert.deepEqual(
+      freshness.result.structuredContent,
+      JSON.parse(freshness.text),
+    );
     assertResponseValueFree(
       freshness.text,
       forbiddenValues,
       `${label} freshness`,
+    );
+    await assertRepositoriesUnchanged(
+      repositoryA,
+      repositoryB,
+      beforeA,
+      beforeB,
+    );
+
+    const cliReviewOutput = execFileSync(
+      process.execPath,
+      [cliPath, "review", "--base", base, "--head", head, "--format", "json"],
+      {
+        cwd: repositoryA,
+        encoding: "utf8",
+        env: credentialFreeEnv(),
+      },
+    );
+    const cliReview = JSON.parse(cliReviewOutput);
+    assert.equal(cliReview.schemaVersion, "aidoc.review.v1");
+    const review = await callText(
+      localClient,
+      "review_documentation_impact",
+      { base, head },
+      `${label} review_documentation_impact`,
+    );
+    assert.notEqual(review.result.isError, true);
+    assert.deepEqual(JSON.parse(review.text), cliReview);
+    assert.deepEqual(review.result.structuredContent, cliReview);
+    assertResponseValueFree(
+      review.text,
+      forbiddenValues,
+      `${label} review`,
     );
     await assertRepositoriesUnchanged(
       repositoryA,

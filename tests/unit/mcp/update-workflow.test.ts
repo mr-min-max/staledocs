@@ -19,8 +19,16 @@ import {
   handleToolCall,
   TOOLS,
 } from "../../../src/mcp/server";
-import { createMCPUpdateWorkflowContext } from "../../../src/mcp/update-workflow";
-import { PreparationTokenCodec } from "../../../src/mcp/preparation-token";
+import {
+  createMCPUpdateWorkflowContext,
+  PREPARATION_STORE_CAPACITY,
+  PreparationStore,
+} from "../../../src/mcp/update-workflow";
+import {
+  MCP_PREPARATION_SCHEMA,
+  PreparationTokenCodec,
+  type PreparationClaims,
+} from "../../../src/mcp/preparation-token";
 
 function git(root: string, ...args: string[]): string {
   return execFileSync("git", args, {
@@ -61,6 +69,304 @@ function fixtureRepository(multipleTargets = false): {
   return { root, base, head: git(root, "rev-parse", "HEAD") };
 }
 
+function syntheticClaims(target: string): PreparationClaims {
+  return {
+    schemaVersion: MCP_PREPARATION_SCHEMA,
+    planDigest: "0".repeat(64),
+    maxContextBytes: 12000,
+    target,
+    targetDigest: "1".repeat(64),
+  };
+}
+
+describe("preparation store", () => {
+  it("evicts the oldest target once capacity is exceeded", () => {
+    const store = new PreparationStore();
+    const targets = Array.from(
+      { length: PREPARATION_STORE_CAPACITY + 1 },
+      (_, index) => `docs/${index}.md`,
+    );
+    for (const target of targets) {
+      store.record(target, syntheticClaims(target), `token-${target}`);
+    }
+
+    expect(PREPARATION_STORE_CAPACITY).toBe(32);
+    expect(store.latest(targets[0])).toBeUndefined();
+    expect(store.latest(targets[1])?.token).toBe(`token-${targets[1]}`);
+    expect(store.latest(targets[targets.length - 1])?.claims.target).toBe(
+      targets[targets.length - 1],
+    );
+  });
+
+  it("keeps one preparation per target and refreshes its position", () => {
+    const store = new PreparationStore();
+    store.record("README.md", syntheticClaims("README.md"), "first");
+    for (let index = 1; index < PREPARATION_STORE_CAPACITY; index += 1) {
+      store.record(
+        `docs/${index}.md`,
+        syntheticClaims(`docs/${index}.md`),
+        "x",
+      );
+    }
+    store.record("README.md", syntheticClaims("README.md"), "second");
+    store.record("docs/new.md", syntheticClaims("docs/new.md"), "x");
+
+    expect(store.latest("README.md")?.token).toBe("second");
+    expect(store.latest("docs/1.md")).toBeUndefined();
+    store.clear();
+    expect(store.latest("README.md")).toBeUndefined();
+  });
+});
+
+describe("validation by target", () => {
+  const roots: string[] = [];
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    for (const root of roots.splice(0))
+      rmSync(root, { recursive: true, force: true });
+  });
+
+  async function serverFixture(multipleTargets = false) {
+    const fixture = fixtureRepository(multipleTargets);
+    roots.push(fixture.root);
+    const context = await createMCPServerContext(
+      fixture.root,
+      Object.create(null),
+    );
+    return { ...fixture, context };
+  }
+
+  it("validates the latest server-side preparation without a digest", async () => {
+    const { base, head, context } = await serverFixture();
+    const prepared = (await handleToolCall(
+      "prepare_documentation_update",
+      { base, head },
+      context,
+    )) as { target: string };
+
+    const validated = (await handleToolCall(
+      "validate_documentation_draft",
+      { target: prepared.target, candidate_markdown: "# API\n\nUpdated.\n" },
+      context,
+    )) as { valid: boolean; target: string; approved_markdown?: string };
+
+    expect(validated).toMatchObject({
+      valid: true,
+      target: "README.md",
+      approved_markdown: "# API\n\nUpdated.\n",
+    });
+  });
+
+  it("validates by target on the direct-call compatibility path", async () => {
+    const fixture = fixtureRepository();
+    roots.push(fixture.root);
+    await handleToolCall(
+      "prepare_documentation_update",
+      { base: fixture.base, head: fixture.head },
+      fixture.root,
+    );
+
+    const validated = (await handleToolCall(
+      "validate_documentation_draft",
+      { target: "README.md", candidate_markdown: "# API\n\nUpdated.\n" },
+      fixture.root,
+    )) as { valid: boolean };
+
+    expect(validated.valid).toBe(true);
+  });
+
+  it("rejects validation by target without a prior preparation", async () => {
+    const { context } = await serverFixture();
+
+    const thrown = await handleToolCall(
+      "validate_documentation_draft",
+      { target: "README.md", candidate_markdown: "# API\n" },
+      context,
+    ).catch((error: unknown) => error);
+
+    expect(thrown).toMatchObject({ code: "MCP_INVALID_PREPARATION" });
+  });
+
+  it("keeps separate preparations for separate targets", async () => {
+    const { root, base, head, context } = await serverFixture(true);
+    writeFileSync(join(root, "docs", "API.md"), "# API\n\nSee `greet` here.\n");
+    const readmeBytes = readFileSync(join(root, "README.md")).byteLength;
+    const apiBytes = readFileSync(join(root, "docs", "API.md")).byteLength;
+    await handleToolCall(
+      "prepare_documentation_update",
+      { base, head, target: "README.md" },
+      context,
+    );
+    await handleToolCall(
+      "prepare_documentation_update",
+      { base, head, target: "docs/API.md" },
+      context,
+    );
+
+    const readme = (await handleToolCall(
+      "validate_documentation_draft",
+      { target: "README.md", candidate_markdown: "# API\n" },
+      context,
+    )) as { valid: boolean; target: string; diff: { oldBytes: number } };
+    const api = (await handleToolCall(
+      "validate_documentation_draft",
+      { target: "docs/API.md", candidate_markdown: "# API\n" },
+      context,
+    )) as { valid: boolean; target: string; diff: { oldBytes: number } };
+
+    expect(readme).toMatchObject({
+      valid: true,
+      target: "README.md",
+      diff: { oldBytes: readmeBytes },
+    });
+    expect(api).toMatchObject({
+      valid: true,
+      target: "docs/API.md",
+      diff: { oldBytes: apiBytes },
+    });
+  });
+
+  it("validates against the newest preparation for a target", async () => {
+    const { root, base, head, context } = await serverFixture();
+    await handleToolCall(
+      "prepare_documentation_update",
+      { base, head },
+      context,
+    );
+    writeFileSync(join(root, "README.md"), "# API\n\nSee `greet` again.\n");
+    await handleToolCall(
+      "prepare_documentation_update",
+      { base, head },
+      context,
+    );
+
+    const validated = (await handleToolCall(
+      "validate_documentation_draft",
+      { target: "README.md", candidate_markdown: "# API\n" },
+      context,
+    )) as { valid: boolean };
+
+    expect(validated.valid).toBe(true);
+  });
+
+  it("fails closed when the target changed after preparation", async () => {
+    const { root, base, head, context } = await serverFixture();
+    await handleToolCall(
+      "prepare_documentation_update",
+      { base, head },
+      context,
+    );
+    writeFileSync(join(root, "README.md"), "# Changed\n");
+
+    const thrown = await handleToolCall(
+      "validate_documentation_draft",
+      { target: "README.md", candidate_markdown: "# API\n" },
+      context,
+    ).catch((error: unknown) => error);
+
+    expect(thrown).toMatchObject({ code: "MCP_INVALID_PREPARATION" });
+  });
+
+  it("does not let the store rescue a supplied wrong digest", async () => {
+    const { base, head, context } = await serverFixture();
+    const prepared = (await handleToolCall(
+      "prepare_documentation_update",
+      { base, head },
+      context,
+    )) as { preparation_digest: string; target: string };
+
+    const thrown = await handleToolCall(
+      "validate_documentation_draft",
+      {
+        preparation_digest: `${prepared.preparation_digest.slice(0, -1)}x`,
+        target: prepared.target,
+        candidate_markdown: "# API\n",
+      },
+      context,
+    ).catch((error: unknown) => error);
+
+    expect(thrown).toMatchObject({ code: "MCP_INVALID_PREPARATION" });
+  });
+
+  it("rejects an empty supplied digest", async () => {
+    const { base, head, context } = await serverFixture();
+    await handleToolCall(
+      "prepare_documentation_update",
+      { base, head },
+      context,
+    );
+
+    const thrown = await handleToolCall(
+      "validate_documentation_draft",
+      {
+        preparation_digest: "",
+        target: "README.md",
+        candidate_markdown: "# API\n",
+      },
+      context,
+    ).catch((error: unknown) => error);
+
+    expect(thrown).toMatchObject({ code: "MCP_INVALID_PREPARATION" });
+  });
+
+  it("still accepts the exact digest returned by preparation", async () => {
+    const { base, head, context } = await serverFixture();
+    const prepared = (await handleToolCall(
+      "prepare_documentation_update",
+      { base, head },
+      context,
+    )) as { preparation_digest: string; target: string };
+
+    const validated = (await handleToolCall(
+      "validate_documentation_draft",
+      {
+        preparation_digest: prepared.preparation_digest,
+        target: prepared.target,
+        candidate_markdown: "# API\n",
+      },
+      context,
+    )) as { valid: boolean };
+
+    expect(validated.valid).toBe(true);
+  });
+
+  it.each([
+    { others: PREPARATION_STORE_CAPACITY - 1, valid: true },
+    { others: PREPARATION_STORE_CAPACITY, valid: false },
+  ])(
+    "evicts a prepared target after $others newer targets: valid=$valid",
+    async ({ others, valid }) => {
+      const { base, head, context } = await serverFixture();
+      await handleToolCall(
+        "prepare_documentation_update",
+        { base, head },
+        context,
+      );
+      for (let index = 0; index < others; index += 1) {
+        const target = `docs/${index}.md`;
+        context.updateWorkflow.preparations.record(
+          target,
+          syntheticClaims(target),
+          "unused",
+        );
+      }
+
+      const result = await handleToolCall(
+        "validate_documentation_draft",
+        { target: "README.md", candidate_markdown: "# API\n" },
+        context,
+      ).catch((error: unknown) => error);
+
+      if (valid) {
+        expect(result).toMatchObject({ valid: true });
+      } else {
+        expect(result).toMatchObject({ code: "MCP_INVALID_PREPARATION" });
+      }
+    },
+  );
+});
+
 describe("provider-free MCP update workflow", () => {
   const roots: string[] = [];
 
@@ -99,7 +405,7 @@ describe("provider-free MCP update workflow", () => {
         target: { type: "string" },
         candidate_markdown: { type: "string" },
       },
-      required: ["preparation_digest", "target", "candidate_markdown"],
+      required: ["target", "candidate_markdown"],
       additionalProperties: false,
     });
     expect(prepare?.inputSchema.properties).not.toHaveProperty("directory");

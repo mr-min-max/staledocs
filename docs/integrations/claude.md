@@ -45,8 +45,10 @@ Available skills:
 
 - `/staledocs:check [base-ref]`: check documentation freshness through MCP;
   report stale, missing, and unknown evidence without writing files.
-- `/staledocs:review [base-ref]`: run the deterministic CLI review report in
-  the current worktree, with Claude's normal shell permission.
+- `/staledocs:review [base-ref]`: return the deterministic review report
+  through the `review_documentation_impact` MCP tool, or run the CLI review in
+  the current worktree with Claude's normal shell permission when the
+  connected server does not list that tool.
 - `/staledocs:maintain-documentation`: prepare a bounded update, generate a
   draft with the host model, validate it, and ask permission before applying
   only the approved Markdown.
@@ -145,9 +147,10 @@ Use the provider-free MCP boundary in this order:
    never guess.
 3. Generate one Markdown candidate from only the returned
    `generation.system_prompt` and `generation.prompt`.
-4. Validate it with `validate_documentation_draft`, passing
-   `structuredContent.preparation_digest` and the selected relative target
-   unchanged from preparation. Never retype or reconstruct the signed value.
+4. Call `validate_documentation_draft` with the selected relative `target`
+   and the exact `candidate_markdown`. Add the exact `preparation_digest` from
+   preparation only when the tool's input schema marks it as required
+   (0.4.0-beta.1). Do not copy it into text or retype it.
 5. Stop or reprepare on invalid, stale, blocked, or reprepare-required output.
 6. Show the approved diff metadata, request Claude's normal permission, apply
    only `approved_markdown` to the exact target, and call
@@ -160,10 +163,12 @@ no findings were detected. Trust Gate does not control Claude's context
 window, model, sandbox, isolation, or permission system. StaleDocs does not read
 Claude authentication files or receive a Claude subscription token.
 
-Known host-integration limitation: [issue #49](https://github.com/mr-min-max/staledocs/issues/49)
-records a live Codex attempt that transcribed the signed digest incorrectly.
-An altered digest is rejected; prompting a host to preserve it is not a
-programmatic relay guarantee. Reprepare if needed, never bypass validation.
+In the unreleased version on `main`, validation uses the server's latest
+preparation for the target, so the host does not relay the signed digest
+([issue #49](https://github.com/mr-min-max/staledocs/issues/49) recorded a live
+Codex attempt that transcribed it incorrectly). 0.4.0-beta.1 still requires
+the digest. A supplied digest must be the exact value from preparation; an
+altered one is rejected. Reprepare if needed, never bypass validation.
 
 Direct provider mode supports `openai`, `anthropic`, `deepseek`, `qwen`,
 `openai-compatible`, and `ollama` separately; it never silently falls back.
