@@ -468,6 +468,7 @@ export const TOOLS: Tool[] = [
       },
       additionalProperties: false,
     },
+    outputSchema: auditReportSchema(),
   },
   {
     name: "plan_documentation_impact",
@@ -917,6 +918,54 @@ function impactPlanSchema(): ToolOutputSchema {
       "ignored",
       "digest",
     ],
+  };
+}
+
+function auditReportSchema(): ToolOutputSchema {
+  return {
+    type: "object",
+    properties: {
+      schema_version: { type: "string", const: "aidoc.audit.v1" },
+      revision: { type: "string" },
+      summary: {
+        type: "object",
+        properties: {
+          findings: { type: "integer" },
+          files: { type: "integer" },
+          byKind: {
+            type: "object",
+            additionalProperties: { type: "integer" },
+          },
+          truncated: { type: "boolean" },
+        },
+        required: ["findings", "files", "byKind"],
+      },
+      findings: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            file: { type: "string" },
+            section: { type: "string" },
+            slug: { type: "string" },
+            kind: { type: "string" },
+            value: { type: "string" },
+            closest: { type: "string" },
+            evidence: { type: "string" },
+          },
+          required: ["file", "section", "slug", "kind", "value", "evidence"],
+        },
+      },
+      ignored: {
+        type: "object",
+        properties: {
+          documentationLimitReached: { type: "boolean" },
+          treeLimitReached: { type: "boolean" },
+          boundaryLimitReached: { type: "boolean" },
+        },
+      },
+    },
+    required: ["schema_version", "revision", "summary", "findings"],
   };
 }
 

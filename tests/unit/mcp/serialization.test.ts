@@ -206,6 +206,7 @@ describe("MCP structured results", () => {
         "check_docs_freshness",
         { directory: ".", doc_file: "README.md", since: base },
       ],
+      ["audit_documentation", {}],
       ["plan_documentation_impact", { base, head }],
       ["prepare_documentation_update", { base, head }],
       [
