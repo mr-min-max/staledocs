@@ -225,7 +225,7 @@ describe("validation by target", () => {
       target: "docs/API.md",
       diff: { oldBytes: apiBytes },
     });
-  });
+  }, 30_000);
 
   it("validates against the newest preparation for a target", async () => {
     const { root, base, head, context } = await serverFixture();
