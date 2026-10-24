@@ -68,7 +68,7 @@ export function renderReviewMarkdown(
     "<!-- staledocs-review -->",
     "### StaleDocs: documentation impact",
   ];
-  if (report.summary.publicApiChanges === 0) {
+  if (report.changes.length === 0) {
     const notAnalyzed = formatNotAnalyzed(report.notAnalyzed, true, 5);
     lines.push(
       notAnalyzed.length === 0
@@ -166,7 +166,7 @@ export function renderReviewText(
   maxSymbols = 30,
 ): string {
   const lines: string[] = [];
-  if (report.summary.publicApiChanges === 0) {
+  if (report.changes.length === 0) {
     const notAnalyzed = formatNotAnalyzed(report.notAnalyzed, false, 5);
     lines.push(
       notAnalyzed.length === 0

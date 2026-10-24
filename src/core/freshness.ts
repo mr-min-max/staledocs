@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { getChangedFiles, getGitRoot } from "../git/history";
 import { createImpactPlan, discoverReadme } from "../impact/planner";
 import { toPlanError } from "../impact/canonical";
-import type { ImpactPlan } from "../impact/types";
+import { isContractChange, type ImpactPlan } from "../impact/types";
 
 export type DocumentationCheckStatus =
   | "clean"
@@ -50,10 +50,7 @@ export function assessDocumentationFreshness(input: {
   const targetChanged = changedFiles.includes(target);
   const symbolChanges = new Map(
     input.plan.changes
-      .filter(
-        (change) =>
-          change.scope === "symbol" && change.visibility !== "internal",
-      )
+      .filter(isContractChange)
       .map((change) => [change.id, change]),
   );
   const referencesBySection = new Map<
@@ -102,12 +99,9 @@ export function assessDocumentationFreshness(input: {
   }
   const sourceFiles = [
     ...new Set(
-      input.plan.changes
-        .filter(
-          (change) =>
-            change.scope === "symbol" && change.visibility !== "internal",
-        )
-        .map((change) => normalizeDocPath(change.path)),
+      [...symbolChanges.values()].map((change) =>
+        normalizeDocPath(change.path),
+      ),
     ),
   ].sort(compareStrings);
   const referenced = [...referencedSymbols].sort(compareStrings);

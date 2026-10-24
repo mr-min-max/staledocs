@@ -117,28 +117,6 @@ describe("review command", () => {
     expect(result.summary.unmappedSymbols).toBe(1);
   });
 
-  it("assesses a directly mentioned implementation-only change without listing it as a report change", async () => {
-    writeFileSync(
-      join(root, "src", "user.ts"),
-      "export function createUser(email: string): string { return email.trim(); }\n",
-    );
-
-    const result = await createReviewReport({ base: "HEAD" }, root);
-
-    expect(result.changes).toEqual([]);
-    expect(result.summary.publicApiChanges).toBe(0);
-    expect(result.documents).toEqual([
-      {
-        path: "README.md",
-        status: "stale",
-        sections: [
-          { section: "API", slug: "api-1", symbols: ["createUser"] },
-        ],
-      },
-    ]);
-    expect(result.verdict).toBe("stale");
-  });
-
   it.each([
     [
       "an implementation-only change",

@@ -1,5 +1,6 @@
 import { canonicalStringify, compareChangeKeys, sha256Hex } from "./canonical";
 import type { SnapshotFileStatus } from "../git/snapshot";
+import { CONTRACT_CHANGE_CATEGORIES, isContractChange } from "./types";
 import type {
   ChangeCategory,
   ContractFacet,
@@ -219,27 +220,11 @@ export function summarizeImpact(
     if (
       change.visibility === "internal" &&
       change.scope === "symbol" &&
-      (change.category === "added" ||
-        change.category === "exposed" ||
-        change.category === "removed" ||
-        change.category === "hidden" ||
-        change.category === "contract-changed" ||
-        change.category === "moved")
+      CONTRACT_CHANGE_CATEGORIES.has(change.category)
     ) {
       internalChanges += 1;
     }
-    if (
-      change.scope === "symbol" &&
-      change.visibility !== "internal" &&
-      (change.category === "added" ||
-        change.category === "exposed" ||
-        change.category === "removed" ||
-        change.category === "hidden" ||
-        change.category === "contract-changed" ||
-        change.category === "moved")
-    ) {
-      publicApiChanges += 1;
-    }
+    if (isContractChange(change)) publicApiChanges += 1;
     if (change.visibility !== "internal") publicChangeIds.add(change.id);
     if (change.risk === "potentially-breaking") potentiallyBreaking += 1;
     else if (change.risk === "review-required") reviewRequired += 1;
