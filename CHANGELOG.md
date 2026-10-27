@@ -2,8 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.5.0-beta.1] - 2026-10-27
 
+- Register StaleDocs in the official MCP Registry as
+  `io.github.mr-min-max/staledocs`: `server.json` describes the npm package as
+  a local stdio server started with `--mcp`, `package.json` carries the
+  matching `mcpName`, and a new `mcp-registry` release job publishes it after
+  npm accepts the package, through GitHub Actions OIDC with a pinned
+  `mcp-publisher` checked against its SHA-256.
+- Pin the Action examples, the pre-commit hook example, the Claude Code and
+  Codex plugin launchers, and the integration guides to `0.5.0-beta.1`.
+- Update dotenv to 18.0.9, the OpenAI SDK to 7.43.0, ESLint to 10.13.0, and
+  typescript-eslint to 8.72.0.
 - Update the OpenAI provider: the default model is `gpt-6-luna`, requests no
   longer send `temperature` (current OpenAI models are reasoning models, and the
   default sampling is accepted by every model), and an incomplete non-streaming
@@ -31,7 +41,7 @@ All notable changes to this project are documented in this file.
   `codex plugin marketplace add mr-min-max/staledocs` and
   `codex plugin add staledocs@staledocs` install three skills, `check`,
   `review`, and `maintain-documentation`, plus a StaleDocs MCP server pinned to
-  the published `staledocs@0.4.0-beta.1`; the plugin keeps the Codex compatibility
+  an exact published `staledocs` version; the plugin keeps the Codex compatibility
   layout because the portable `mcp.json` layout starts the server in the plugin
   cache directory, outside any Git worktree.
 - Rewrite the Codex guide as an install-and-use page and extend the public-beta
@@ -46,7 +56,7 @@ All notable changes to this project are documented in this file.
 - Add a repository-hosted Claude Code plugin marketplace with read-only
   `/staledocs:check` and `/staledocs:review` skills and a permissioned
   preparation, draft-validation, and approved-write workflow.
-- Pin the plugin's MCP launcher to the published `staledocs@0.4.0-beta.1`;
+- Pin the plugin's MCP launcher to an exact published `staledocs` version;
   document Node.js requirements, repository scope, source-checkout npm
   behavior, separate host billing, and the signed-digest relay limitation.
 - Refresh Claude installation instructions and the non-blocking Action example.
@@ -83,10 +93,9 @@ All notable changes to this project are documented in this file.
   server-side preparation for its `target`, so hosts no longer relay the
   signed digest (#49). `preparation_digest` is optional; a supplied value must
   still be exact, and stale or changed targets still fail closed. Each server
-  keeps up to 32 targets, newest preparation per target. The plugins keep the
-  published `0.4.0-beta.1` pin until the release, and the
+  keeps up to 32 targets, newest preparation per target. The
   `maintain-documentation` skills pass the exact digest only when the server's
-  tool schema requires it, so they work with both versions.
+  tool schema requires it, so they also work with `0.4.0-beta.1`.
 - Added: every MCP tool declares an output schema and returns its JSON result
   as `structuredContent` as well as text, including `plan_documentation_impact`
   and `check_docs_freshness`.

@@ -1,6 +1,7 @@
 # StaleDocs CLI reference
 
-This is the complete command catalogue for the published `0.4.0-beta.1` beta.
+This is the complete command catalogue for the `0.5.0-beta.1` release candidate,
+which is not published yet; the npm `beta` channel stays on the previous beta until then.
 The executable is `staledocs`. For provider credentials, subscription and API
 billing boundaries, repository safety details, and current caveats, see the
 [Public Beta guide](./PUBLIC_BETA.md), [Limitations](./LIMITATIONS.md), and
@@ -30,9 +31,9 @@ provider-free. The MCP workflow prepares and validates Markdown but never writes
 the repository; the host decides whether to apply the approved Markdown under
 its normal permission boundary.
 
-The MCP server exposes these tools. In the unreleased version on `main`, every
-tool also returns its JSON result as `structuredContent` and declares an output
-schema; in `0.4.0-beta.1` only the prepare and validate tools do.
+The MCP server exposes these tools. From `0.5.0-beta.1`, every tool also
+returns its JSON result as `structuredContent` and declares an output schema;
+earlier betas do this only for the prepare and validate tools.
 
 | Tool                           | Behavior                                                                                      |
 | ------------------------------ | --------------------------------------------------------------------------------------------- |
@@ -41,17 +42,16 @@ schema; in `0.4.0-beta.1` only the prepare and validate tools do.
 | `generate_api_docs`            | Generate API reference Markdown with the configured direct provider.                          |
 | `generate_diagram`             | Generate a Mermaid architecture diagram with the configured direct provider.                  |
 | `check_docs_freshness`         | Report sections of one document that mention changed public symbols.                          |
-| `audit_documentation`          | Unreleased: return the `aidoc.audit.v1` report that `staledocs audit --json` prints.          |
+| `audit_documentation`          | Return the `aidoc.audit.v1` report that `staledocs audit --json` prints.                      |
 | `plan_documentation_impact`    | Return the `aidoc.impact-plan.v1` plan for a base and head.                                   |
-| `review_documentation_impact`  | Unreleased: return the `aidoc.review.v1` report that `staledocs review --format json` prints. |
+| `review_documentation_impact`  | Return the `aidoc.review.v1` report that `staledocs review --format json` prints.             |
 | `prepare_documentation_update` | Prepare one bounded Markdown update without writing files or calling a provider.              |
 | `validate_documentation_draft` | Validate a host draft against its preparation without writing files.                          |
 
-In `0.4.0-beta.1`, `validate_documentation_draft` requires
-`preparation_digest`, `target`, and `candidate_markdown`. In the unreleased
-version on `main`, only `target` and `candidate_markdown` are required; a
-supplied `preparation_digest` must be the exact value returned by
-`prepare_documentation_update`.
+From `0.5.0-beta.1`, `validate_documentation_draft` requires only `target`
+and `candidate_markdown`; a supplied `preparation_digest` must be the exact
+value returned by `prepare_documentation_update`. Earlier betas also require
+`preparation_digest`.
 
 All document writes use the repository-contained safety checks described in the
 [Public Beta guide](./PUBLIC_BETA.md). A dry run previews output without
@@ -131,7 +131,7 @@ header is retained while the new entry is inserted after it.
 ```bash
 staledocs changelog
 staledocs changelog --from v0.3.0-beta.1 --to HEAD
-staledocs changelog --version 0.4.0-beta.1
+staledocs changelog --version 0.5.0-beta.1
 staledocs changelog --output docs/CHANGELOG.md
 staledocs changelog --dry-run --yes --strict-output
 staledocs changelog --mock
@@ -499,12 +499,12 @@ StaleDocs also provides a pre-commit hook for the Python pre-commit ecosystem:
 ```yaml
 repos:
   - repo: https://github.com/mr-min-max/staledocs
-    rev: v0.4.0-beta.1
+    rev: v0.5.0-beta.1
     hooks:
       - id: staledocs-check
 ```
 
-The immutable hook pin and moving `v0` tag both resolve to the published `0.4.0-beta.1` release.
+The immutable hook pin resolves after `0.5.0-beta.1` is published; the moving `v0` tag follows once the owner moves it.
 
 The hook runs `staledocs check --since HEAD` on `pre-push`. It does not pass filenames.
 Install Node.js and `staledocs` before enabling it.

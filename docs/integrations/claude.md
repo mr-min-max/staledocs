@@ -1,7 +1,7 @@
 # StaleDocs with Claude Desktop or Claude Code
 
 This guide covers the Claude Code plugin and manual local MCP hosting for
-StaleDocs `0.4.0-beta.1`. Neither path gives StaleDocs Claude.ai OAuth access
+StaleDocs `0.5.0-beta.1`. Neither path gives StaleDocs Claude.ai OAuth access
 or turns a host subscription into a direct-provider credential.
 
 For the complete command catalogue and beta boundaries, see [CLI.md](../CLI.md)
@@ -35,7 +35,7 @@ Restart Claude Code if it requests a restart. Use `/mcp` to confirm that the
 plugin's StaleDocs server is connected. The repository hosts its own
 marketplace; this is **not an approved listing in Anthropic's directory**.
 
-The plugin pins its local MCP command to `npx --yes staledocs@0.4.0-beta.1 --mcp`.
+The plugin pins its local MCP command to `npx --yes staledocs@0.5.0-beta.1 --mcp`.
 The first launch downloads the npm package and dependencies; subsequent launches
 use npm's cache. No StaleDocs provider key is required for drift analysis,
 preparation, or draft validation. Claude authenticates and bills its own model
@@ -54,7 +54,7 @@ Available skills:
   only the approved Markdown.
 
 For a whole-repository pass, `/staledocs:check` calls the `audit_documentation`
-MCP tool when the server lists it (releases after `0.4.0-beta.1`).
+MCP tool when the server lists it (from `0.5.0-beta.1`).
 
 The plugin has no hooks or automatic writes. Start a new Claude Code session
 in the intended worktree when switching projects; an already-running MCP
@@ -86,7 +86,7 @@ or unversioned package.
 Install the published version:
 
 ```bash
-npm install -g staledocs@0.4.0-beta.1
+npm install -g staledocs@0.5.0-beta.1
 staledocs --version
 ```
 
@@ -153,7 +153,7 @@ Use the provider-free MCP boundary in this order:
 4. Call `validate_documentation_draft` with the selected relative `target`
    and the exact `candidate_markdown`. Add the exact `preparation_digest` from
    preparation only when the tool's input schema marks it as required
-   (0.4.0-beta.1). Do not copy it into text or retype it.
+   (betas before 0.5.0-beta.1). Do not copy it into text or retype it.
 5. Stop or reprepare on invalid, stale, blocked, or reprepare-required output.
 6. Show the approved diff metadata, request Claude's normal permission, apply
    only `approved_markdown` to the exact target, and call
@@ -166,10 +166,10 @@ no findings were detected. Trust Gate does not control Claude's context
 window, model, sandbox, isolation, or permission system. StaleDocs does not read
 Claude authentication files or receive a Claude subscription token.
 
-In the unreleased version on `main`, validation uses the server's latest
+From `0.5.0-beta.1`, validation uses the server's latest
 preparation for the target, so the host does not relay the signed digest
 ([issue #49](https://github.com/mr-min-max/staledocs/issues/49) recorded a live
-Codex attempt that transcribed it incorrectly). 0.4.0-beta.1 still requires
+Codex attempt that transcribed it incorrectly). Earlier betas still require
 the digest. A supplied digest must be the exact value from preparation; an
 altered one is rejected. Reprepare if needed, never bypass validation.
 
