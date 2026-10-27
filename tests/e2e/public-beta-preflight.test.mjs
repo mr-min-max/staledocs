@@ -45,6 +45,7 @@ const SOURCE_ARTIFACTS = {
     "docs/releases/v0.2.0-beta.5.md",
     "docs/releases/v0.3.0-beta.1.md",
     "docs/releases/v0.4.0-beta.1.md",
+    "docs/releases/v0.5.0-beta.1.md",
   ],
   storefrontDocumentation: [
     "docs/CLI.md",

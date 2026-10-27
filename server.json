@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.mr-min-max/staledocs",
+  "title": "StaleDocs",
+  "description": "Finds documentation that no longer matches your code. Deterministic AST check; no API key.",
+  "repository": {
+    "url": "https://github.com/mr-min-max/staledocs",
+    "source": "github"
+  },
+  "websiteUrl": "https://staledocs.com",
+  "version": "0.5.0-beta.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "staledocs",
+      "version": "0.5.0-beta.1",
+      "transport": { "type": "stdio" },
+      "runtimeHint": "npx",
+      "packageArguments": [{ "type": "positional", "value": "--mcp" }]
+    }
+  ]
+}

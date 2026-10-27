@@ -1,6 +1,7 @@
 {
   "name": "staledocs",
-  "version": "0.4.0-beta.1",
+  "version": "0.5.0-beta.1",
+  "mcpName": "io.github.mr-min-max/staledocs",
   "description": "Finds documentation that no longer matches your code. Deterministic AST check for pull requests; no API key. TypeScript, JavaScript, Python.",
   "main": "dist/cli/index.js",
   "bin": {
