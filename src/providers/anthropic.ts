@@ -8,7 +8,11 @@ import type {
 import { withRetry } from "../core/retry";
 import { GenerateOptions, LLMProvider } from "./types";
 
-const DEFAULT_MODEL = "claude-sonnet-5";
+const DEFAULT_MODEL = "claude-sonnet-5-5";
+// Current Claude models think by default, and thinking counts toward max_tokens.
+const DEFAULT_MAX_TOKENS = 16000;
+const TRUNCATED_MESSAGE = "Anthropic provider response stopped at max_tokens";
+const REFUSED_MESSAGE = "Anthropic provider declined the request";
 
 interface AnthropicClient {
   messages: {
@@ -82,18 +86,39 @@ function requestParams(
   options: GenerateOptions,
   stream: boolean,
 ): MessageCreateParamsNonStreaming | MessageCreateParamsStreaming {
+  // No temperature, top_p, or top_k: API version 2026-10-21 rejects them on
+  // every model, and current Claude models accept only the default sampling.
   return {
     model,
-    max_tokens: options.maxTokens ?? 4096,
+    max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
     messages: [{ role: "user", content: prompt }],
     ...(stream ? { stream: true } : {}),
     ...(options.systemPrompt === undefined
       ? {}
       : { system: options.systemPrompt }),
-    ...(options.temperature === undefined
-      ? {}
-      : { temperature: options.temperature }),
   } as MessageCreateParamsNonStreaming | MessageCreateParamsStreaming;
+}
+
+/** Fails on stop reasons that leave no complete answer to return. */
+function assertCompleteStop(stopReason: unknown): void {
+  if (stopReason === "max_tokens") throw new Error(TRUNCATED_MESSAGE);
+  if (stopReason === "refusal") throw new Error(REFUSED_MESSAGE);
+}
+
+function safeStopReason(response: unknown): unknown {
+  if (typeof response !== "object" || response === null) return undefined;
+  try {
+    return Reflect.get(response, "stop_reason");
+  } catch {
+    return undefined;
+  }
+}
+
+function isTerminalProviderError(error: unknown): error is Error {
+  return (
+    error instanceof Error &&
+    (error.message === TRUNCATED_MESSAGE || error.message === REFUSED_MESSAGE)
+  );
 }
 
 function messageText(response: unknown): string {
@@ -160,11 +185,13 @@ export class AnthropicProvider implements LLMProvider {
         const response = await client.messages.create(
           requestParams(this.model, prompt, options, false),
         );
+        assertCompleteStop(safeStopReason(response));
         return messageText(response);
       } catch (error: unknown) {
         if (
-          error instanceof Error &&
-          error.message === "Anthropic provider returned no text"
+          isTerminalProviderError(error) ||
+          (error instanceof Error &&
+            error.message === "Anthropic provider returned no text")
         ) {
           throw error;
         }
@@ -189,12 +216,18 @@ export class AnthropicProvider implements LLMProvider {
     const client = await loadClient(this.apiKey);
     const run = async (): Promise<string> => {
       let sawTerminalEvent = false;
+      let stopReason: unknown;
       try {
         const stream = client.messages.stream(
           requestParams(this.model, prompt, options, true),
         );
         let full = "";
         for await (const event of stream) {
+          if (event.type === "message_delta") {
+            stopReason = event.delta.stop_reason;
+            continue;
+          }
+
           if (event.type === "content_block_delta") {
             if (event.delta.type !== "text_delta") continue;
             if (typeof event.delta.text !== "string") {
@@ -222,11 +255,14 @@ export class AnthropicProvider implements LLMProvider {
         if (!sawTerminalEvent) {
           throw new Error("Anthropic provider stream ended prematurely");
         }
+        assertCompleteStop(stopReason);
         if (full.trim() === "") {
           throw new Error("Anthropic provider returned no text");
         }
         return full;
       } catch (error: unknown) {
+        // Truncation and refusal are not retryable and say more than a generic failure.
+        if (isTerminalProviderError(error)) throw error;
         if (emitted) {
           return Promise.reject(
             new Error("Anthropic provider stream failed after output"),
