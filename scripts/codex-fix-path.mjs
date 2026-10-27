@@ -4,7 +4,9 @@
  *
  * For every fixture and run, this script builds a temporary Git repository in
  * which a documented public API changed on a branch, runs `codex exec` once
- * against this checkout's built MCP server (`dist/cli/index.js --mcp`), and
+ * against this checkout's built MCP server (`dist/cli/index.js --mcp`), or
+ * against a published package (`npx --yes staledocs@<version> --mcp`) with
+ * `--package`, and
  * records whether the first `validate_documentation_draft` call succeeded,
  * whether the validated Markdown mentions the change, and whether the fixture
  * was modified. The evidence directory receives one JSON record and the raw
@@ -13,7 +15,11 @@
  *
  *   npm run build
  *   node scripts/codex-fix-path.mjs --runs 3 --evidence <dir> \
- *     [--fixture ts-function|ts-method|py-init|all] [--model <id>] [--codex <path>]
+ *     [--fixture ts-function|ts-method|py-init|all] [--model <id>] [--codex <path>] \
+ *     [--package staledocs@<version>]
+ *
+ * The fixture precondition (`review` reports the document as stale) always
+ * uses this checkout's build; `--package` changes only the server Codex calls.
  *
  * Every run spends the signed-in Codex account's usage. The script never reads
  * or copies credentials: Codex uses its own login from CODEX_HOME, and
@@ -93,6 +99,7 @@ function parseArguments(argv) {
     else if (flag === "--fixture") options.fixture = value;
     else if (flag === "--model") options.model = value;
     else if (flag === "--codex") options.codex = value;
+    else if (flag === "--package") options.package = value;
     else throw new UsageError(`Unknown option ${flag}.`);
   }
   if (
@@ -110,6 +117,12 @@ function parseArguments(argv) {
     !/^[A-Za-z0-9._:-]+$/u.test(options.model)
   ) {
     throw new UsageError("--model must be a plain model id.");
+  }
+  if (
+    options.package !== undefined &&
+    !/^staledocs@[0-9A-Za-z.+-]+$/u.test(options.package)
+  ) {
+    throw new UsageError("--package must be staledocs@<version>.");
   }
   return options;
 }
@@ -235,7 +248,14 @@ function tomlString(value) {
   return JSON.stringify(value);
 }
 
+function serverCommand(options) {
+  return options.package === undefined
+    ? { command: "node", args: [cliPath, "--mcp"] }
+    : { command: "npx", args: ["--yes", options.package, "--mcp"] };
+}
+
 function codexArguments(options, repository, finalMessagePath) {
+  const server = serverCommand(options);
   return [
     "exec",
     "--json",
@@ -245,9 +265,9 @@ function codexArguments(options, repository, finalMessagePath) {
     "-C",
     repository,
     "-c",
-    'mcp_servers.staledocs.command="node"',
+    `mcp_servers.staledocs.command=${tomlString(server.command)}`,
     "-c",
-    `mcp_servers.staledocs.args=[${tomlString(cliPath)},"--mcp"]`,
+    `mcp_servers.staledocs.args=[${server.args.map(tomlString).join(",")}]`,
     "-c",
     "mcp_servers.staledocs.required=true",
     ...APPROVED_TOOLS.flatMap((tool) => [
@@ -352,6 +372,26 @@ function codexVersion(codex) {
   }
 }
 
+function serverVersion(options) {
+  // Resolving a published package here also fills the npx cache, so Codex does
+  // not spend its server startup time on the download. It runs outside this
+  // checkout: inside it, npm treats the root `staledocs` package as the match
+  // and finds no `staledocs` bin.
+  const server = serverCommand(options);
+  try {
+    return runSync(
+      server.command,
+      [...server.args.slice(0, -1), "--version"],
+      options.package === undefined ? repositoryRoot : tmpdir(),
+      codexEnvironment(),
+    ).trim();
+  } catch (error) {
+    throw new UsageError(
+      `StaleDocs server did not run (${error.code ?? error.message}).`,
+    );
+  }
+}
+
 function timestamp(date) {
   return date.toISOString().replace(/[-:]/gu, "").replace(/\.\d+Z$/u, "Z");
 }
@@ -364,7 +404,7 @@ async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
     process.stdout.write(
-      "Usage: node scripts/codex-fix-path.mjs --runs 3 --evidence <dir> [--fixture ts-function|ts-method|py-init|all] [--model <id>] [--codex <path>]\n",
+      "Usage: node scripts/codex-fix-path.mjs --runs 3 --evidence <dir> [--fixture ts-function|ts-method|py-init|all] [--model <id>] [--codex <path>] [--package staledocs@<version>]\n",
     );
     return 0;
   }
@@ -373,6 +413,7 @@ async function main() {
   }
   const fixtures = loadFixtures(options.fixture);
   const version = codexVersion(options.codex);
+  const server = `${options.package ?? "checkout"} ${serverVersion(options)}`;
   const prompt = readFileSync(join(harnessDirectory, "prompt.md"), "utf8");
   mkdirSync(options.evidence, { recursive: true });
   const startedAt = new Date();
@@ -417,6 +458,7 @@ async function main() {
           started_at: runStartedAt.toISOString(),
           duration_seconds: durationSeconds,
           codex_version: version,
+          server,
           model: firstModel(events) ?? options.model ?? null,
           exit_code: outcome.exitCode,
           signal: outcome.signal,
@@ -462,6 +504,7 @@ async function main() {
         schema: "staledocs.codex-fix-path-summary.v1",
         started_at: startedAt.toISOString(),
         codex_version: version,
+        server,
         models,
         runs_per_fixture: options.runs,
         fixtures: rows,
@@ -472,7 +515,7 @@ async function main() {
     )}\n`,
   );
   process.stdout.write(
-    `\n${version}; model ${models.map((model) => model ?? "not reported").join(", ")}\n\n${renderSummaryTable(rows)}\n\nWrote summary.json and ${files.length} run records to the evidence directory.\n`,
+    `\n${version}; server ${server}; model ${models.map((model) => model ?? "not reported").join(", ")}\n\n${renderSummaryTable(rows)}\n\nWrote summary.json and ${files.length} run records to the evidence directory.\n`,
   );
   return runs.some((run) => run.writes.length > 0) ? 1 : 0;
 }
