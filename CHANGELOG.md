@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+- Add `--package staledocs@<version>` to `scripts/codex-fix-path.mjs`, so the
+  Codex fix-path check can run against a published package started with
+  `npx`; run records and `summary.json` name the server they used.
+- Record the published `0.5.0-beta.1` evaluation (7 of 10 expectations, up
+  from 6 of 10) in `docs/EVALUATIONS.md` and its release notes, the Codex
+  fix-path result against the published package in the Codex guide, and the
+  next candidates in `ROADMAP.md`.
+
 ## [0.5.0-beta.1] - 2026-10-27
 
 - Register StaleDocs in the official MCP Registry as

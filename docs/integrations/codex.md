@@ -87,12 +87,18 @@ and validate tools because `codex exec` cannot prompt. It uses your Codex sign-i
 and ChatGPT plan, needs no API key, and does not run in CI. `writes` counts runs
 that changed the fixture; the script then exits non-zero.
 
-On 2026-10-24, Codex CLI 0.163.0-alpha.10.2 with this repository's unreleased server validated on the first attempt in 6 of 6 runs: each run called `prepare_documentation_update`, then `validate_documentation_draft` with only the target and the candidate; the validated Markdown named the changed parameter (`correct`), and no fixture file changed. Earlier digest transcription failures are tracked in issue #49.
+Add `--package staledocs@<version>` to point Codex at a published package,
+started with `npx --yes staledocs@<version> --mcp`, instead of this checkout's
+build. The fixture check that StaleDocs reports the document as stale still uses
+the build.
+
+On 2026-10-27, Codex CLI 0.163.0-alpha.10.2 with the published `staledocs@0.5.0-beta.1` validated on the first attempt in 8 of 9 runs. Each of those runs called `validate_documentation_draft` once, without a preparation digest, and the validated Markdown named the changed signature (`correct`). The ninth run (`py-init`) never reached a tool: Codex stopped after 30 seconds waiting for the MCP server, started through `npx`, to finish its handshake, while Codex's own model list request also timed out. No run changed a fixture file. Earlier digest transcription failures were tracked in issue #49.
 
 | Fixture     | Runs | first_validate_ok | correct | writes | median seconds |
 | ----------- | ---- | ----------------- | ------- | ------ | -------------- |
-| ts-function | 3    | 3/3               | 3/3     | 0/3    | 16.6           |
-| ts-method   | 3    | 3/3               | 3/3     | 0/3    | 16.3           |
+| py-init     | 3    | 2/3               | 2/3     | 0/3    | 31.1           |
+| ts-function | 3    | 3/3               | 3/3     | 0/3    | 19.9           |
+| ts-method   | 3    | 3/3               | 3/3     | 0/3    | 25.0           |
 
 ## Repository scope and troubleshooting
 

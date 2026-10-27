@@ -2,20 +2,26 @@
 
 ## Now
 
-StaleDocs `0.4.0-beta.1` is published with a ten-target before/after evaluation corpus.
-Claude Code plugin packaging and installation are being added alongside the
-existing Codex integration. Live model validation remains separate from local
-MCP smoke checks; signed-digest transcription is tracked in
-[issue #49](https://github.com/mr-min-max/staledocs/issues/49).
+StaleDocs `0.5.0-beta.1` is published on npm and in the official MCP Registry as
+`io.github.mr-min-max/staledocs`. It adds `staledocs audit` with the
+`audit_documentation` MCP tool, the read-only `review_documentation_impact` MCP
+tool, stale findings only for contract changes, Python constructor checks, and
+Codex and Claude Code plugin marketplaces. `validate_documentation_draft` no
+longer needs the preparation digest
+([issue #49](https://github.com/mr-min-max/staledocs/issues/49) is closed).
 
 ## Next
 
 Candidates, not promises:
 
-- README audit that reports when a mentioned symbol no longer exists.
+- Package boundaries in monorepos, so a change in one package maps only to its
+  own documentation.
+- Matching documentation mentions to class and interface members.
+- A second evaluation corpus with new labels.
+- `staledocs audit` as a GitHub Action mode.
+- Reading Markdown from the head revision instead of the working tree.
 - Documentation coverage badge.
 - A breaking-change section in `staledocs changelog`.
-- An MCP tool that returns the review report.
 
 ## Not planned
 
