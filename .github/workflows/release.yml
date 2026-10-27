@@ -165,3 +165,28 @@ jobs:
           files: |
             ${{ runner.temp }}/staledocs-artifact/*.tgz
             ${{ runner.temp }}/staledocs-artifact/*.sha256
+
+  mcp-registry:
+    needs: publish
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned mcp-publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/mcp-publisher_linux_amd64.tar.gz"
+          curl --fail --location --silent --show-error --output "$archive" \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.5/mcp-publisher_linux_amd64.tar.gz"
+          echo "2d151ac57275c9a6684d9d22b1cba81058bab195ea0a162e8fce3c6a5ec32812  $archive" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP" mcp-publisher
+          rm -f "$archive"
+      - name: Authenticate to MCP Registry
+        run: '"$RUNNER_TEMP/mcp-publisher" login github-oidc'
+      - name: Publish server to MCP Registry
+        run: '"$RUNNER_TEMP/mcp-publisher" publish'

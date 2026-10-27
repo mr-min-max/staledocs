@@ -66,7 +66,7 @@ describe("public beta repository configuration", () => {
       "utf8",
     );
     const script = packageJson.scripts["test:npm-published"];
-    expect(packageJson.version).toBe("0.4.0-beta.1");
+    expect(packageJson.version).toBe("0.5.0-beta.1");
     expect(script).toContain(
       "--version 0.4.0-beta.1 --latest 0.4.0-beta.1",
     );
@@ -106,6 +106,7 @@ describe("public beta repository configuration", () => {
       "docs/GITHUB_ACTION.md",
       "docs/RELEASING.md",
       "docs/releases/v0.4.0-beta.1.md",
+      "docs/releases/v0.5.0-beta.1.md",
     ]) {
       expect(fs.existsSync(path.join(root, file))).toBe(true);
     }
@@ -155,6 +156,7 @@ describe("public beta repository configuration", () => {
       "docs/GITHUB_ACTION.md",
       "docs/RELEASING.md",
       "docs/releases/v0.4.0-beta.1.md",
+      "docs/releases/v0.5.0-beta.1.md",
     ]
       .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
       .join("\n");
