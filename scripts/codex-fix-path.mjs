@@ -13,7 +13,7 @@
  *
  *   npm run build
  *   node scripts/codex-fix-path.mjs --runs 3 --evidence <dir> \
- *     [--fixture ts-function|ts-method|all] [--model <id>] [--codex <path>]
+ *     [--fixture ts-function|ts-method|py-init|all] [--model <id>] [--codex <path>]
  *
  * Every run spends the signed-in Codex account's usage. The script never reads
  * or copies credentials: Codex uses its own login from CODEX_HOME, and
@@ -364,7 +364,7 @@ async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
     process.stdout.write(
-      "Usage: node scripts/codex-fix-path.mjs --runs 3 --evidence <dir> [--fixture ts-function|ts-method|all] [--model <id>] [--codex <path>]\n",
+      "Usage: node scripts/codex-fix-path.mjs --runs 3 --evidence <dir> [--fixture ts-function|ts-method|py-init|all] [--model <id>] [--codex <path>]\n",
     );
     return 0;
   }

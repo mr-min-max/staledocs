@@ -1,0 +1,17 @@
+{
+  "name": "py-init",
+  "description": "A documented Python exception class changes a constructor annotation from dict to Mapping; the README errors section still describes the old constructor.",
+  "base": {
+    "pyproject.toml": "[project]\nname = \"pkg\"\nversion = \"0.1.0\"\n",
+    "pkg/__init__.py": "from .exceptions import HTTPException\n\n__all__ = [\"HTTPException\"]\n",
+    "pkg/exceptions.py": "from typing import Optional\n\n\nclass HTTPException(Exception):\n    def __init__(self, status_code: int, headers: Optional[dict[str, str]] = None) -> None:\n        self.status_code = status_code\n        self.headers = headers\n",
+    "README.md": "# pkg\n\n## Errors\n\nRaise `HTTPException` with a status code.\n"
+  },
+  "head": {
+    "pkg/exceptions.py": "from collections.abc import Mapping\nfrom typing import Optional\n\n\nclass HTTPException(Exception):\n    def __init__(self, status_code: int, headers: Optional[Mapping[str, str]] = None) -> None:\n        self.status_code = status_code\n        self.headers = headers\n"
+  },
+  "expect": {
+    "staleDocument": "README.md",
+    "contains": "Mapping[str, str]"
+  }
+}

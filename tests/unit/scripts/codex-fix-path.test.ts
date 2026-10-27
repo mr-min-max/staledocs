@@ -254,7 +254,7 @@ describe("Codex fix-path harness analysis", () => {
     );
   });
 
-  it.each(["ts-function", "ts-method"])(
+  it.each(["ts-function", "ts-method", "py-init"])(
     "reads the shipped %s fixture",
     (name) => {
       const fixture = readFixture(
