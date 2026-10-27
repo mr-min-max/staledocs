@@ -1016,10 +1016,11 @@ function callableSnapshot(
   const signatureShapes = sortNormalized(
     contractDeclarations.map(normalizeDeclarationContract),
   );
-  const contractFacets: Partial<Record<ContractFacet, string>> = {
-    parameters: fingerprint(parameterShapes),
-    modifiers: fingerprint(modifierShapes),
-  };
+  // Starts from {}: a non-empty literal is checked against the missing optional
+  // "constructor" facet as Object.prototype.constructor and fails to compile.
+  const contractFacets: Partial<Record<ContractFacet, string>> = {};
+  contractFacets.parameters = fingerprint(parameterShapes);
+  contractFacets.modifiers = fingerprint(modifierShapes);
   if (
     contractDeclarations.some((declaration) => declaration.getReturnTypeNode())
   ) {
@@ -1087,10 +1088,9 @@ function interfaceMethodSnapshot(
   const signatureShapes = sortNormalized(
     declarations.map(normalizeDeclarationContract),
   );
-  const contractFacets: Partial<Record<ContractFacet, string>> = {
-    parameters: fingerprint(parameterShapes),
-    modifiers: fingerprint(modifierShapes),
-  };
+  const contractFacets: Partial<Record<ContractFacet, string>> = {};
+  contractFacets.parameters = fingerprint(parameterShapes);
+  contractFacets.modifiers = fingerprint(modifierShapes);
   if (declarations.some((declaration) => declaration.getReturnTypeNode())) {
     contractFacets.return = fingerprint(returnShapes);
   }
@@ -1119,10 +1119,9 @@ function classSnapshot(
     .getHeritageClauses()
     .map((clause) => normalizeAst(clause));
   const memberShape = publicClassMemberShapes(declaration);
-  const contractFacets: Partial<Record<ContractFacet, string>> = {
-    members: fingerprint(memberShape),
-    modifiers: fingerprint(modifierShape),
-  };
+  const contractFacets: Partial<Record<ContractFacet, string>> = {};
+  contractFacets.members = fingerprint(memberShape);
+  contractFacets.modifiers = fingerprint(modifierShape);
   if (inheritanceShape.length > 0) {
     contractFacets.inheritance = fingerprint(inheritanceShape);
   }
@@ -1183,10 +1182,9 @@ function interfaceSnapshot(
       declaration.getMembers().map(normalizeDeclarationContract),
     ),
   ]);
-  const contractFacets: Partial<Record<ContractFacet, string>> = {
-    members: fingerprint(members),
-    modifiers: fingerprint(modifiers),
-  };
+  const contractFacets: Partial<Record<ContractFacet, string>> = {};
+  contractFacets.members = fingerprint(members);
+  contractFacets.modifiers = fingerprint(modifiers);
   if (inheritance.length > 0) {
     contractFacets.inheritance = fingerprint(inheritance);
   }
@@ -1209,17 +1207,16 @@ function typeAliasSnapshot(
   declaration: TypeAliasDeclaration,
   qualifiedName: string,
 ): ParserSymbolSnapshot {
-  const contractFacets: Partial<Record<ContractFacet, string>> = {
-    members: fingerprint([
-      declaration
-        .getTypeParameters()
-        .map((parameter) => normalizeAst(parameter)),
-      normalizeAst(declaration.getTypeNodeOrThrow()),
-    ]),
-    modifiers: fingerprint(
-      declaration.getModifiers().map((modifier) => normalizeAst(modifier)),
-    ),
-  };
+  const contractFacets: Partial<Record<ContractFacet, string>> = {};
+  contractFacets.members = fingerprint([
+    declaration
+      .getTypeParameters()
+      .map((parameter) => normalizeAst(parameter)),
+    normalizeAst(declaration.getTypeNodeOrThrow()),
+  ]);
+  contractFacets.modifiers = fingerprint(
+    declaration.getModifiers().map((modifier) => normalizeAst(modifier)),
+  );
   return declarationSnapshot(
     "type",
     qualifiedName,
@@ -1242,22 +1239,21 @@ function enumSnapshot(
   declarations: EnumDeclaration[],
   qualifiedName: string,
 ): ParserSymbolSnapshot {
-  const contractFacets: Partial<Record<ContractFacet, string>> = {
-    members: fingerprint(
-      sortNormalized(
-        declarations.map((declaration) =>
-          declaration.getMembers().map(normalizeDeclarationContract),
-        ),
+  const contractFacets: Partial<Record<ContractFacet, string>> = {};
+  contractFacets.members = fingerprint(
+    sortNormalized(
+      declarations.map((declaration) =>
+        declaration.getMembers().map(normalizeDeclarationContract),
       ),
     ),
-    modifiers: fingerprint(
-      sortNormalized(
-        declarations.map((declaration) =>
-          declaration.getModifiers().map((modifier) => normalizeAst(modifier)),
-        ),
+  );
+  contractFacets.modifiers = fingerprint(
+    sortNormalized(
+      declarations.map((declaration) =>
+        declaration.getModifiers().map((modifier) => normalizeAst(modifier)),
       ),
     ),
-  };
+  );
   const memberNames = [
     ...new Set(
       declarations.flatMap((declaration) =>
@@ -1297,13 +1293,12 @@ function variableSnapshot(binding: ExportedBinding): ParserSymbolSnapshot {
         Node.hasName(property) ? property.getName() : property.getKindName(),
       )
       .sort(compareText);
-  const facets: Partial<Record<ContractFacet, string | null>> = {
-    modifiers: fingerprint([
-      statement.getDeclarationKind(),
-      statement.hasDeclareKeyword(),
-    ]),
-    members: memberShape === null ? null : fingerprint(memberShape),
-  };
+  const facets: Partial<Record<ContractFacet, string | null>> = {};
+  facets.modifiers = fingerprint([
+    statement.getDeclarationKind(),
+    statement.hasDeclareKeyword(),
+  ]);
+  facets.members = memberShape === null ? null : fingerprint(memberShape);
   return {
     language: "typescript",
     kind: "variable",
@@ -1328,10 +1323,9 @@ function variableExpressionSnapshot(
   binding: ExportedBinding,
 ): ParserSymbolSnapshot {
   const expression = binding.declaration;
-  const facets: Partial<Record<ContractFacet, string | null>> = {
-    modifiers: fingerprint(["const", false]),
-    members: null,
-  };
+  const facets: Partial<Record<ContractFacet, string | null>> = {};
+  facets.modifiers = fingerprint(["const", false]);
+  facets.members = null;
   return {
     language: "typescript",
     kind: "variable",
