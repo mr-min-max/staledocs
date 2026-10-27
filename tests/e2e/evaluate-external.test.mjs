@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -13,6 +13,9 @@ import {
   assertNoLabelRegression,
 } from "../../scripts/evaluate-external.mjs";
 
+const CURRENT_PACKAGE = `staledocs@${
+  JSON.parse(await readFile(path.resolve("package.json"), "utf8")).version
+}`;
 const target = {
   repo: "owner/library",
   language: "typescript",
@@ -27,7 +30,7 @@ const target = {
 function result(overrides = {}) {
   return {
     ...target,
-    package: "staledocs@0.4.0-beta.1",
+    package: CURRENT_PACKAGE,
     status: "OK",
     publicApiChanges: 1,
     staleDocuments: 1,
@@ -231,7 +234,7 @@ test("rejects old evidence for a different SHA, package, or an oversized metadat
     );
     await writeFile(
       path.join(dir, "metadata.json"),
-      JSON.stringify({ ...old, package: "staledocs@0.4.0-beta.1" }),
+      JSON.stringify({ ...old, package: CURRENT_PACKAGE }),
     );
     await assert.rejects(
       readComparisonEvidence(root, [target]),
