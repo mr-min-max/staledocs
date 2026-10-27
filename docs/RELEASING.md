@@ -6,6 +6,70 @@ This is the maintainer procedure for publishing StaleDocs. It separates reposito
 
 Merging a release-readiness pull request does not publish a package. The release workflow runs only after a matching `v*` tag is pushed. Do not create or push a release tag without a separate explicit publication decision made after every pre-release check below passes.
 
+## 0.5.0-beta.1 procedure
+
+Identical to 0.4.0-beta.1, plus the MCP Registry job. After the release-readiness pull request merges, pin the exact `main` commit and repeat the gates on a clean checkout of it:
+
+```bash
+git fetch origin main &&
+release_sha="$(git rev-parse origin/main)" &&
+git switch --detach "$release_sha" &&
+test -z "$(git status --porcelain=v1)" &&
+npm ci &&
+npm run verify:release &&
+npm run test:public-beta &&
+node scripts/public-beta-preflight.mjs --json --candidate-ref "$release_sha" &&
+node scripts/verify-release-candidate.mjs --main-ref origin/main --candidate-ref HEAD --tag v0.5.0-beta.1 --expected-sha "$release_sha" &&
+test -z "$(git status --porcelain=v1)"
+```
+
+After a separate publication decision, tag that commit and push only the tag:
+
+```bash
+git tag -a v0.5.0-beta.1 "$release_sha" -m "v0.5.0-beta.1" &&
+git push origin v0.5.0-beta.1
+```
+
+The `Release` workflow then runs `verify` on Node.js 22 and 24, `publish` (npm Trusted Publishing with provenance, npm `beta`), and, after npm accepts the package, `github-release` and `mcp-registry` in parallel. Confirm all four jobs:
+
+```bash
+gh run list --workflow release.yml --limit 1
+gh run view <run id> --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'
+npm view staledocs@0.5.0-beta.1 version mcpName
+```
+
+Then promote the channels and move the Action tag:
+
+```bash
+npx npm@latest dist-tag add staledocs@0.5.0-beta.1 latest
+npx npm@latest dist-tag add staledocs@0.5.0-beta.1 beta
+npm dist-tag ls staledocs
+git tag -f v0 v0.5.0-beta.1 && git push -f origin v0
+```
+
+### npm dist-tag with a passkey account
+
+The current npm CLI opens a browser challenge for `npm dist-tag add` on an account that signs in with a passkey. Older npm CLIs print a misleading one-time-password prompt instead. Run the command through the current CLI with `npx npm@latest`, as above, and complete the challenge in the browser.
+
+### MCP Registry
+
+`server.json` at the repository root describes the npm package for the official MCP Registry as `io.github.mr-min-max/staledocs`, a local stdio server started with `npx staledocs --mcp`. Its `version` and `packages[0].version` must equal `package.json`, and `package.json` must carry `mcpName` with the same server name; the release unit tests fail otherwise, so every later release bumps all three together.
+
+The `mcp-registry` job needs `publish`, so it runs only after npm accepts the package, and nothing depends on it: a registry failure leaves the npm package and the GitHub prerelease in place. It downloads `mcp-publisher` from a pinned registry release, checks the archive against the SHA-256 recorded in the workflow, signs in with `mcp-publisher login github-oidc` (GitHub Actions OIDC, `id-token: write`, no secret), and runs `mcp-publisher publish`. The registry accepts the server only if the published npm version carries the matching `mcpName`. To update the publisher, change the release tag and the SHA-256 together, taking the digest from the asset list of that release; never use the `latest` download URL.
+
+Check the entry after the job succeeds:
+
+```bash
+curl -s "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.mr-min-max/staledocs" | jq '.metadata.count'
+```
+
+If the job fails with a package validation error right after publication, npm metadata may not have propagated yet; re-run the failed job once. If OIDC sign-in fails, publish once from a trusted terminal in a clean checkout of the tag, with the same pinned `mcp-publisher` release, through the interactive GitHub sign-in, which grants the personal `io.github.mr-min-max` namespace:
+
+```bash
+mcp-publisher login github
+mcp-publisher publish
+```
+
 ## 0.4.0-beta.1 record
 
 Released on 2026-09-13 through the existing OIDC workflow with no reusable npm credential or name claim.

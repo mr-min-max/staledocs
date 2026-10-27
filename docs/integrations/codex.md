@@ -1,7 +1,7 @@
 # StaleDocs with Codex
 
-This guide covers the Codex plugin and manual local MCP setup for the published
-`0.4.0-beta.1` StaleDocs CLI. The plugin commands below were checked with Codex CLI
+This guide covers the Codex plugin and manual local MCP setup for the StaleDocs
+`0.5.0-beta.1` CLI. The plugin commands below were checked with Codex CLI
 0.163.0-alpha.10.2. It is not a ChatGPT web integration: ChatGPT web does not read
 local Codex configuration or local stdio MCP servers.
 
@@ -23,13 +23,13 @@ Start a new Codex session in the repository you want to check. `codex plugin lis
 shows `staledocs@staledocs` as `installed, enabled`, and `/mcp` in Codex shows the
 `staledocs` server. Remove it with `codex plugin remove staledocs@staledocs`.
 
-The plugin launches `npx --yes staledocs@0.4.0-beta.1 --mcp`. The first launch
+The plugin launches `npx --yes staledocs@0.5.0-beta.1 --mcp`. The first launch
 downloads the npm package; later launches use npm's cache.
 
 Without the plugin, add only the MCP server:
 
 ```bash
-codex mcp add staledocs -- npx --yes staledocs@0.4.0-beta.1 --mcp
+codex mcp add staledocs -- npx --yes staledocs@0.5.0-beta.1 --mcp
 codex mcp list
 ```
 
@@ -51,11 +51,11 @@ MCP tools the skills use:
 
 - `check_docs_freshness`: stale sections that mention changed public symbols.
 - `audit_documentation`: whole-repository Markdown references to scripts,
-  paths, and class members that no longer exist (releases after `0.4.0-beta.1`).
+  paths, and class members that no longer exist (from `0.5.0-beta.1`).
 - `plan_documentation_impact`: affected documentation targets for a base and head.
 - `prepare_documentation_update`: bounded context and prompts for one target.
 - `validate_documentation_draft`: validate a candidate without writing files.
-- `review_documentation_impact`: the full review report (releases after `0.4.0-beta.1`).
+- `review_documentation_impact`: the full review report (from `0.5.0-beta.1`).
 
 ## Safe update workflow
 
@@ -63,9 +63,9 @@ MCP tools the skills use:
    several targets are returned, you choose; Codex does not guess.
 2. Codex generates one complete Markdown candidate from only those prompts.
 3. `validate_documentation_draft` receives the target and the exact candidate
-   (releases after `0.4.0-beta.1` keep the preparation on the server). The pinned
-   `0.4.0-beta.1` also requires the exact `preparation_digest`, passed as a
-   structured argument from preparation. Do not copy it into text or retype it.
+   (from `0.5.0-beta.1` the server keeps the preparation). Earlier betas also
+   require the exact `preparation_digest`, passed as a structured argument from
+   preparation. Do not copy it into text or retype it.
 4. Codex stops or prepares again if validation is invalid, stale, or blocked.
 5. When valid, Codex shows the approved diff and asks for its normal write
    permission, then applies only `approved_markdown` to that target.
