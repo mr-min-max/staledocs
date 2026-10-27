@@ -54,7 +54,7 @@ describe("OpenAIProvider Responses transport", () => {
     ).resolves.toBe('{"ok":true}');
 
     expect(client.responses.create).toHaveBeenCalledWith({
-      model: "gpt-5.6-luna",
+      model: "gpt-6-luna",
       instructions: "system-value",
       input: "prompt-value",
       max_output_tokens: 2048,
@@ -63,7 +63,7 @@ describe("OpenAIProvider Responses transport", () => {
     expect(client.chat.completions.create).not.toHaveBeenCalled();
   });
 
-  it("passes an explicitly requested temperature without inventing a default", async () => {
+  it("never sends sampling parameters", async () => {
     const provider = new OpenAIProvider("fake-openai-key", "caller-model");
     const client = clientOf(provider);
     client.responses.create.mockResolvedValue({ output_text: "ok" });
@@ -73,8 +73,22 @@ describe("OpenAIProvider Responses transport", () => {
     expect(client.responses.create).toHaveBeenCalledWith({
       model: "caller-model",
       input: "prompt",
-      temperature: 0.15,
     });
+  });
+
+  it("rejects an incomplete response instead of returning partial text", async () => {
+    const provider = new OpenAIProvider("fake-openai-key");
+    const client = clientOf(provider);
+    client.responses.create.mockResolvedValue({
+      status: "incomplete",
+      incomplete_details: { reason: "max_output_tokens" },
+      output_text: "partial",
+    });
+
+    await expect(provider.generate("prompt-secret")).rejects.toThrow(
+      /OpenAI provider response was incomplete/,
+    );
+    expect(client.responses.create).toHaveBeenCalledTimes(1);
   });
 
   it("extracts output_text and rejects malformed or empty output safely", async () => {
@@ -158,7 +172,7 @@ describe("OpenAIProvider Responses streaming", () => {
     ).resolves.toBe("Hello");
     expect(tokens).toEqual(["Hel", "lo"]);
     expect(client.responses.create).toHaveBeenCalledWith({
-      model: "gpt-5.6-luna",
+      model: "gpt-6-luna",
       input: "prompt",
       stream: true,
     });
