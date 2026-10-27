@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Update the Anthropic provider for current Claude models: the default model is
+  `claude-sonnet-5-5`, the SDK is `@anthropic-ai/sdk` 1.x (API version
+  `2026-10-21`, Apache-2.0 licensed), requests no longer send `temperature`,
+  which that API version and current models reject, the default `max_tokens` is
+  16000 because thinking counts toward it, and a response that stops at
+  `max_tokens` or is refused now fails instead of returning partial text.
 - Add `staledocs audit` and the `audit_documentation` MCP tool: a one-time,
   deterministic pass over the working tree's Markdown, including `AGENTS.md`,
   `CLAUDE.md`, and the GitHub Copilot instructions file, that reports package

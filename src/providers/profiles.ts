@@ -38,7 +38,7 @@ export const PROVIDER_PROFILES: readonly ProviderProfile[] = Object.freeze([
     name: "anthropic",
     displayName: "Anthropic",
     credentialEnv: "ANTHROPIC_API_KEY",
-    defaultModel: "claude-sonnet-5",
+    defaultModel: "claude-sonnet-5-5",
     transport: "anthropic-messages",
     boundary: "remote",
   }),

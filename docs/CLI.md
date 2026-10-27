@@ -262,7 +262,11 @@ Options:
 - `--all` updates every automatically affected document. It cannot be combined
   with `--target`.
 - `--provider <name>` selects a direct provider profile.
-- `--model <model>` overrides the provider model.
+- `--model <model>` overrides the provider model. The `anthropic` profile
+  defaults to `claude-sonnet-5-5`; `--model claude-haiku-5-5` costs less. Anthropic
+  requests use API version `2026-10-21` and send no `temperature`, `top_p`, or
+  `top_k`, which that version rejects. A response that stops at `max_tokens` or is
+  refused fails instead of returning partial Markdown.
 - `--provider-base-url <url>` sets an advanced compatible-provider base URL.
 - `--allow-local-http` allows confirmed loopback HTTP for a compatible provider.
 - `--yes` applies every generated diff without prompting.
