@@ -55,6 +55,7 @@ const FACETS: readonly ContractFacet[] = [
   "inheritance",
   "members",
   "modifiers",
+  "constructor",
 ];
 
 /**

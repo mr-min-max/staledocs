@@ -66,6 +66,7 @@ const CONTRACT_FACETS: readonly ContractFacet[] = [
   "inheritance",
   "members",
   "modifiers",
+  "constructor",
 ];
 
 const DOCUMENTATION_REASONS: readonly DocumentationReference["reason"][] = [

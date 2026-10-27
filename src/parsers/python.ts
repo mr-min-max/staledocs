@@ -461,14 +461,21 @@ def callable_signature_and_arity(node, is_method=False):
     total = len(positional) + len(arguments.kwonlyargs)
     return render_signature(result), {'required': required, 'total': total}
 
-def class_signature(node):
+def constructor_signature_and_arity(node):
+    signature, arity = callable_signature_and_arity(node, True)
+    prefix = 'async def ' if isinstance(node, ast.AsyncFunctionDef) else 'def '
+    return signature[len(prefix):], arity
+
+def class_signature(node, constructor_signatures):
     if not node.bases or not hasattr(ast, 'unparse'):
-        return render_signature('class ' + node.name)
-    return render_signature(
-        'class ' + node.name + '(' + ', '.join(
-            ast.unparse(base) for base in node.bases
-        ) + ')'
-    )
+        segments = ['class ' + node.name]
+    else:
+        segments = [
+            'class ' + node.name + '(' + ', '.join(
+                ast.unparse(base) for base in node.bases
+            ) + ')'
+        ]
+    return render_signature(' | '.join(segments + constructor_signatures))
 
 def build_symbol(kind, qualified_name, contract_payloads, implementation, node, signature=None, arity=None):
     contract_facets = {
@@ -720,6 +727,17 @@ def extends_callable_group(nodes, node):
         and bool(effective_property_accessors(nodes))
     )
 
+def constructor_nodes(body):
+    nodes = []
+    for item in body:
+        if isinstance(item, CALLABLE_NODES) and item.name == '__init__':
+            nodes = (
+                nodes + [item]
+                if extends_callable_group(nodes, item)
+                else [item]
+            )
+    return nodes
+
 def effective_class_bindings(body):
     bindings = {}
     for index, item in enumerate(body):
@@ -840,7 +858,12 @@ def class_implementation_payload(node):
     return entries
 
 def class_symbol(node):
+    init_nodes = constructor_nodes(node.body)
     contract_payloads = {
+        'constructor': (
+            callable_group_contract_payloads(init_nodes, True)
+            if init_nodes else None
+        ),
         'inheritance': {
             'bases': [ast_payload(item) for item in node.bases],
             'keywords': [ast_payload(item) for item in node.keywords],
@@ -853,13 +876,24 @@ def class_symbol(node):
             ],
         },
     }
+    constructors = [
+        constructor_signature_and_arity(item)
+        for item in (
+            callable_group_contract_nodes(init_nodes, True) if init_nodes else []
+        )
+    ]
+    arity = {
+        'required': min(item[1]['required'] for item in constructors),
+        'total': max(item[1]['total'] for item in constructors),
+    } if constructors else None
     return build_symbol(
         'class',
         node.name,
         contract_payloads,
         class_implementation_payload(node),
         node,
-        class_signature(node),
+        class_signature(node, [item[0] for item in constructors]),
+        arity,
     )
 
 
@@ -1296,22 +1330,25 @@ export class PythonParser implements LanguageParser {
       throw invalidSnapshotOutput();
     }
 
-    const expectedKeys =
-      kind === "class"
-        ? SNAPSHOT_SYMBOL_KEYS.filter((key) => key !== "arity")
-        : SNAPSHOT_SYMBOL_KEYS;
-    if (!hasExactKeys(raw, expectedKeys)) throw invalidSnapshotOutput();
+    // Classes carry arity only when they declare a constructor.
+    const hasExpectedKeys =
+      hasExactKeys(raw, SNAPSHOT_SYMBOL_KEYS) ||
+      (kind === "class" &&
+        hasExactKeys(
+          raw,
+          SNAPSHOT_SYMBOL_KEYS.filter((key) => key !== "arity"),
+        ));
+    if (!hasExpectedKeys) throw invalidSnapshotOutput();
 
     const arity = raw.arity;
     const validArity =
-      kind === "class"
-        ? arity === undefined
-        : isExactRecord(arity, ["required", "total"]) &&
-          Number.isSafeInteger(arity.required) &&
-          Number.isSafeInteger(arity.total) &&
-          (arity.required as number) >= 0 &&
-          (arity.total as number) >= 0 &&
-          (arity.required as number) <= (arity.total as number);
+      (kind === "class" && arity === undefined) ||
+      (isExactRecord(arity, ["required", "total"]) &&
+        Number.isSafeInteger(arity.required) &&
+        Number.isSafeInteger(arity.total) &&
+        (arity.required as number) >= 0 &&
+        (arity.total as number) >= 0 &&
+        (arity.required as number) <= (arity.total as number));
     if (
       raw.language !== "python" ||
       !isSafeQualifiedName(kind, raw.qualifiedName) ||
@@ -1330,7 +1367,7 @@ export class PythonParser implements LanguageParser {
       kind,
       qualifiedName: raw.qualifiedName,
       signature: raw.signature,
-      ...(kind === "class"
+      ...(arity === undefined
         ? {}
         : { arity: arity as { required: number; total: number } }),
       contractFacets: this.mapContractFacets(kind, raw.contractFacets),
@@ -1346,7 +1383,7 @@ export class PythonParser implements LanguageParser {
   ): Partial<Record<ContractFacet, string>> {
     const requiredFacets =
       kind === "class"
-        ? (["inheritance", "members", "modifiers"] as const)
+        ? (["constructor", "inheritance", "members", "modifiers"] as const)
         : (["parameters", "modifiers"] as const);
     if (!isRecord(raw)) throw invalidSnapshotOutput();
     const keys = Object.keys(raw);

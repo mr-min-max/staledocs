@@ -20,7 +20,8 @@ export type ContractFacet =
   | "return"
   | "inheritance"
   | "members"
-  | "modifiers";
+  | "modifiers"
+  | "constructor";
 export type ChangeCategory =
   | "added"
   | "exposed"
@@ -266,7 +267,10 @@ export interface ParserSymbolSnapshot {
   qualifiedName: string;
   /** Value-bearing one-line signature rendered from the AST. Never raw source text. */
   signature: string;
-  /** Callables only. Required = parameters without default/optional/rest. */
+  /**
+   * Callables, and Python classes that declare `__init__` (constructor arity).
+   * Required = parameters without default/optional/rest.
+   */
   arity?: { required: number; total: number };
   contractFacets: Partial<Record<ContractFacet, string | null>>;
   contractFingerprint: string;

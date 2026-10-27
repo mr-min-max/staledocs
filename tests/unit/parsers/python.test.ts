@@ -2016,25 +2016,6 @@ def request() -> int:
         },
       ],
       [
-        "class arity",
-        {
-          ...validSnapshot,
-          symbols: [
-            {
-              ...validSymbol,
-              kind: "class",
-              qualifiedName: "Service",
-              signature: "class Service",
-              contractFacets: {
-                inheritance: hash,
-                members: hash,
-                modifiers: hash,
-              },
-            },
-          ],
-        },
-      ],
-      [
         "class without constructor facet",
         {
           ...validSnapshot,
