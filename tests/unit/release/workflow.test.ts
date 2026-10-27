@@ -15,6 +15,7 @@ interface WorkflowStep {
 
 interface WorkflowJob {
   needs?: string | string[];
+  "continue-on-error"?: boolean;
   permissions?: Record<string, string>;
   env?: Record<string, string>;
   strategy?: { matrix?: Record<string, unknown> };
@@ -48,13 +49,14 @@ describe("release workflow", () => {
     expect(workflow.permissions).toEqual({ contents: "read" });
     expect(Object.keys(workflow.jobs).sort()).toEqual([
       "github-release",
+      "mcp-registry",
       "publish",
       "verify",
     ]);
     expect(workflow.jobs.verify.permissions).toEqual({ contents: "read" });
     for (const [name, job] of Object.entries(workflow.jobs)) {
       expect(job.permissions?.["id-token"]).toBe(
-        name === "publish" ? "write" : undefined,
+        name === "publish" || name === "mcp-registry" ? "write" : undefined,
       );
     }
   });
@@ -66,6 +68,7 @@ describe("release workflow", () => {
 
     expect(uses.map((use) => use.split("@")[0]).sort()).toEqual([
       "actions/checkout",
+      "actions/checkout",
       "actions/download-artifact",
       "actions/download-artifact",
       "actions/setup-node",
@@ -74,7 +77,11 @@ describe("release workflow", () => {
       "softprops/action-gh-release",
     ]);
     expect(uses.every((use) => /^[^@]+@[0-9a-f]{40}$/u.test(use))).toBe(true);
-    for (const action of ["actions/setup-node", "actions/download-artifact"]) {
+    for (const action of [
+      "actions/checkout",
+      "actions/setup-node",
+      "actions/download-artifact",
+    ]) {
       const matches = uses.filter((use) => use.startsWith(`${action}@`));
       expect(new Set(matches).size).toBe(1);
     }
@@ -240,5 +247,59 @@ describe("release workflow", () => {
     expect(serializedSteps).not.toMatch(
       /actions\/checkout|npm ci|npm install|npm pack|npm publish|npm run build/i,
     );
+  });
+
+  it("registers server.json in the MCP Registry after npm with a pinned, checksum-verified publisher", () => {
+    const registry = workflow.jobs["mcp-registry"];
+    expect(registry).toBeDefined();
+    expect(registry.needs).toBe("publish");
+    expect(registry.permissions).toEqual({
+      contents: "read",
+      "id-token": "write",
+    });
+    expect(registry["continue-on-error"]).toBeUndefined();
+    const dependents = Object.entries(workflow.jobs)
+      .filter(([, job]) => [job.needs ?? []].flat().includes("mcp-registry"))
+      .map(([name]) => name);
+    expect(dependents).toEqual([]);
+
+    const checkout = registry.steps.find((step) =>
+      step.uses?.startsWith("actions/checkout@"),
+    );
+    expect(checkout?.with?.["persist-credentials"]).toBe(false);
+
+    const install = stepNamed(registry, "Install pinned mcp-publisher");
+    const installCommand = install.run ?? "";
+    expect(installCommand).toMatch(
+      /https:\/\/github\.com\/modelcontextprotocol\/registry\/releases\/download\/v\d+\.\d+\.\d+\/mcp-publisher_linux_amd64\.tar\.gz/u,
+    );
+    expect(installCommand).not.toMatch(/\/latest\b/u);
+    const checksumIndex = installCommand.search(
+      /\b[0-9a-f]{64}\b[^\n]*\|\s*sha256sum --check --strict/u,
+    );
+    const extractIndex = installCommand.search(/^\s*tar\s/mu);
+    expect(checksumIndex).toBeGreaterThanOrEqual(0);
+    expect(extractIndex).toBeGreaterThan(checksumIndex);
+
+    const login = stepNamed(registry, "Authenticate to MCP Registry");
+    const publish = stepNamed(registry, "Publish server to MCP Registry");
+    expect(normalizedCommand(login.run)).toBe(
+      '"$RUNNER_TEMP/mcp-publisher" login github-oidc',
+    );
+    expect(normalizedCommand(publish.run)).toBe(
+      '"$RUNNER_TEMP/mcp-publisher" publish',
+    );
+    expect(registry.steps.indexOf(install)).toBeLessThan(
+      registry.steps.indexOf(login),
+    );
+    expect(registry.steps.indexOf(login)).toBeLessThan(
+      registry.steps.indexOf(publish),
+    );
+
+    expect(JSON.stringify(registry)).not.toMatch(/secrets\.|--token/u);
+    const otherJobs = Object.entries(workflow.jobs).filter(
+      ([name]) => name !== "mcp-registry",
+    );
+    expect(JSON.stringify(otherJobs)).not.toContain("mcp-publisher");
   });
 });
