@@ -24,7 +24,7 @@ describe("built-in provider profiles", () => {
     expect(getProviderProfile("anthropic")).toMatchObject({
       transport: "anthropic-messages",
       credentialEnv: "ANTHROPIC_API_KEY",
-      defaultModel: "claude-sonnet-5",
+      defaultModel: "claude-sonnet-5-5",
     });
     expect(getProviderProfile("deepseek")).toMatchObject({
       transport: "openai-compatible-chat",
