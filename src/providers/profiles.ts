@@ -30,7 +30,7 @@ export const PROVIDER_PROFILES: readonly ProviderProfile[] = Object.freeze([
     name: "openai",
     displayName: "OpenAI",
     credentialEnv: "OPENAI_API_KEY",
-    defaultModel: "gpt-5.6-luna",
+    defaultModel: "gpt-6-luna",
     transport: "openai-responses",
     boundary: "remote",
   }),

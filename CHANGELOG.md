@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Update the OpenAI provider: the default model is `gpt-6-luna`, requests no
+  longer send `temperature` (current OpenAI models are reasoning models, and the
+  default sampling is accepted by every model), and an incomplete non-streaming
+  response now fails instead of returning partial text.
 - Update the Anthropic provider for current Claude models: the default model is
   `claude-sonnet-5-5`, the SDK is `@anthropic-ai/sdk` 1.x (API version
   `2026-10-21`, Apache-2.0 licensed), requests no longer send `temperature`,
