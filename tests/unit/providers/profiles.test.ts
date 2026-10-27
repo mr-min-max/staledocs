@@ -19,7 +19,7 @@ describe("built-in provider profiles", () => {
       transport: "openai-responses",
       boundary: "remote",
       credentialEnv: "OPENAI_API_KEY",
-      defaultModel: "gpt-5.6-luna",
+      defaultModel: "gpt-6-luna",
     });
     expect(getProviderProfile("anthropic")).toMatchObject({
       transport: "anthropic-messages",
