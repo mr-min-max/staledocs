@@ -3,7 +3,8 @@ import type { OpenAI as OpenAITypes } from "openai";
 import { withRetry } from "../core/retry";
 import { GenerateOptions, LLMProvider } from "./types";
 
-const DEFAULT_MODEL = "gpt-5.6-luna";
+const DEFAULT_MODEL = "gpt-6-luna";
+const INCOMPLETE_MESSAGE = "OpenAI provider response was incomplete";
 
 function safeStatus(error: unknown): number | undefined {
   try {
@@ -75,9 +76,8 @@ function requestParams(
     ...(options.maxTokens === undefined
       ? {}
       : { max_output_tokens: options.maxTokens }),
-    ...(options.temperature === undefined
-      ? {}
-      : { temperature: options.temperature }),
+    // No temperature: current OpenAI models are reasoning models, and leaving
+    // sampling at its default is accepted by every model.
     ...(options.responseFormat === "json"
       ? { text: { format: { type: "json_object" } } }
       : {}),
@@ -86,6 +86,7 @@ function requestParams(
 }
 
 function outputText(response: OpenAITypes.Responses.Response): string {
+  if (response.status === "incomplete") throw new Error(INCOMPLETE_MESSAGE);
   if (
     typeof response.output_text !== "string" ||
     response.output_text.trim() === ""
@@ -120,7 +121,8 @@ export class OpenAIProvider implements LLMProvider {
       } catch (error: unknown) {
         if (
           error instanceof Error &&
-          error.message === "OpenAI provider returned no text"
+          (error.message === "OpenAI provider returned no text" ||
+            error.message === INCOMPLETE_MESSAGE)
         ) {
           throw error;
         }

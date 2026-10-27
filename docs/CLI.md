@@ -250,7 +250,7 @@ staledocs update --target README.md
 staledocs update --target README.md --target docs/API.md
 staledocs update --all
 staledocs update --base origin/main --dry-run
-staledocs update --since HEAD~5 --provider openai --model gpt-5.6-luna
+staledocs update --since HEAD~5 --provider openai --model gpt-6-luna
 ```
 
 Options:
@@ -266,7 +266,9 @@ Options:
   defaults to `claude-sonnet-5-5`; `--model claude-haiku-5-5` costs less. Anthropic
   requests use API version `2026-10-21` and send no `temperature`, `top_p`, or
   `top_k`, which that version rejects. A response that stops at `max_tokens` or is
-  refused fails instead of returning partial Markdown.
+  refused fails instead of returning partial Markdown. The `openai` profile defaults
+  to `gpt-6-luna` and sends no `temperature`; an incomplete response fails the same
+  way.
 - `--provider-base-url <url>` sets an advanced compatible-provider base URL.
 - `--allow-local-http` allows confirmed loopback HTTP for a compatible provider.
 - `--yes` applies every generated diff without prompting.

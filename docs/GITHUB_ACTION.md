@@ -141,7 +141,7 @@ Generate mode remains available for provider-backed documentation creation:
     mode: generate
     provider: openai
     api-key: ${{ secrets.OPENAI_API_KEY }}
-    model: gpt-5.6-luna
+    model: gpt-6-luna
     commands: readme,api
 ```
 

@@ -107,7 +107,7 @@ describe("resolveProviderSelection", () => {
     expect(selection).toMatchObject({
       provider: "openai",
       source: "detected",
-      model: "gpt-5.6-luna",
+      model: "gpt-6-luna",
       credentialEnv: "OPENAI_API_KEY",
     });
     expect(JSON.stringify(selection)).not.toContain("openai-secret");
