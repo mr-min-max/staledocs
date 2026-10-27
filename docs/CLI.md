@@ -220,8 +220,12 @@ Options:
   `total` parameter counts for the head signature, or the base signature when the
   symbol was removed. A contract change is marked `potentially-breaking` when
   required arity increases or total arity decreases; otherwise it remains
-  `review-required`. Set `entry` to an array of repository-relative package entry
-  files to override `package.json` discovery. Set `docs` to an array of additional
+  `review-required`. A Python class that declares `__init__` renders its
+  constructor after the class, as in
+  `class HTTPException(Exception) | __init__(status_code: int, headers: Optional[Mapping[str, str]]=None) -> None`,
+  and carries the constructor's `arity`; a change to that signature is a
+  `contract-changed` class with the facet `constructor`. Set `entry` to an array
+  of repository-relative package entry files to override `package.json` discovery. Set `docs` to an array of additional
   repository-relative Markdown files or directories to include in documentation
   discovery. Neither field accepts an absolute path or `..` traversal.
 
@@ -377,7 +381,7 @@ JSON keeps schema `aidoc.review.v1` and adds the optional `notAnalyzed` array. E
 entry contains a repository-relative `path` and a bounded reason. Text and Markdown
 outputs include the same not-analyzed information.
 
-Review categories are `added`, `now exported`, `removed`, `no longer exported`, `moved`, and changed contract facets. `members` alone is rendered as `members changed`. `no longer exported` is potentially breaking; `now exported` is informational.
+Review categories are `added`, `now exported`, `removed`, `no longer exported`, `moved`, and changed contract facets. `members` alone is rendered as `members changed`; `constructor` marks a Python class whose `__init__` signature changed. `no longer exported` is potentially breaking; `now exported` is informational.
 
 ### `staledocs audit`
 
