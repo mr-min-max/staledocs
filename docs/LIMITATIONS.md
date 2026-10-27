@@ -40,11 +40,13 @@ Adding a symbol to a resolved entry is reported as `now exported`. Removing it i
 
 ## Languages and syntax not enumerated
 
-CommonJS modules (`module.exports`, `exports.x`) are not enumerated; they are listed as not analyzed in the report. Python analysis does not enumerate module constants or dynamic exports. Generated exports and runtime registration are outside the AST snapshot.
+CommonJS modules (`module.exports`, `exports.x`) are not enumerated; they are listed as not analyzed in the report. Python analysis does not enumerate module constants or dynamic exports. The constructor (`__init__`) signature is part of a Python class contract; other dunder methods and `__new__` are not compared, and a `@dataclass` without an explicit `__init__` is compared through its fields as members. Generated exports and runtime registration are outside the AST snapshot.
 
 ## Documentation discovery
 
 The planner discovers up to 30 case-insensitive `*.md` files at the repository root. It recursively scans `docs`, `doc`, `documentation`, `guide`, `guides`, the configured output directory, and repository-relative files or directories listed in `docs` configuration. It also scans `*.md` files non-recursively beside discovered JavaScript or TypeScript package manifests and Python package roots. Directory discovery stops after 2000 unique Markdown files; traversal also stops after 2000 directories or 10000 filesystem entries. Reaching any of these ceilings sets the optional `ignored.documentationLimitReached` plan field. The `docs` array accepts at most 100 entries. Planning exclusion globs and repository-relative path safety apply to every candidate, and symlinks are skipped. After discovery, `.staledocsignore` removes documentation through case-sensitive path patterns whose literal suffix is `.md`, such as `docs/legacy/*.md`.
+
+Translated copies are separate documents: a page kept in several `docs/<language>/` directories is listed once for every copy that mentions a changed symbol. Remove copies maintained elsewhere with a `.staledocsignore` pattern such as `docs/<language>/**.md`.
 
 Changelog-style files (`CHANGELOG.md`, `CHANGES.md`, `HISTORY.md`, `NEWS.md`, `RELEASES.md`) are read for recommendations only; their entries are history and are never reported as stale.
 

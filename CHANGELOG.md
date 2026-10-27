@@ -93,6 +93,14 @@ All notable changes to this project are documented in this file.
   verdict, counts, and rendered text come from the same public API changes and
   no longer disagree. The `review_documentation_impact` and
   `check_docs_freshness` MCP tools follow the same rule.
+- Added: a change to the `__init__` signature of a public Python class
+  (parameter names, annotations, defaults, count, or kind) is a
+  `contract-changed` class with the additive facet `constructor`. The class
+  signature shows the constructor, as in
+  `class HTTPException(Exception) | __init__(status_code: int, ...)`, and the
+  class carries the constructor's `arity`, so adding or removing a required
+  parameter is potentially breaking. Edits inside the `__init__` body or its
+  docstring stay implementation or documentation changes.
 
 ## [0.4.0-beta.1] - 2026-09-12
 
