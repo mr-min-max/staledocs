@@ -1,3 +1,4 @@
+import { PythonParser } from "../../../src/parsers/python";
 import { TypeScriptParser } from "../../../src/parsers/typescript";
 import {
   compareSnapshots,
@@ -254,6 +255,60 @@ describe("impact snapshot comparison", () => {
         kind: "class",
         category: "contract-changed",
         changedContractFacets: ["members"],
+      }),
+    ]);
+  });
+
+  it("reports Python constructor signature changes as class constructor changes", async () => {
+    const parser = new PythonParser();
+    const compareInit = async (
+      beforeParameters: string,
+      afterParameters: string,
+      afterBody = "self.url = url",
+    ) =>
+      compareSnapshots([
+        file(
+          "modified",
+          await parser.snapshot(
+            "src/client.py",
+            `class Client:\n    def __init__(self, ${beforeParameters}):\n        self.url = url\n`,
+          ),
+          await parser.snapshot(
+            "src/client.py",
+            `class Client:\n    def __init__(self, ${afterParameters}):\n        ${afterBody}\n`,
+          ),
+          "src/client.py",
+          "src/client.py",
+        ),
+      ]);
+
+    expect(
+      await compareInit("url: str", "url: str, timeout: float = 1.0"),
+    ).toEqual([
+      expect.objectContaining({
+        qualifiedName: "Client",
+        kind: "class",
+        category: "contract-changed",
+        changedContractFacets: ["constructor"],
+        risk: "review-required",
+      }),
+    ]);
+    expect(await compareInit("url: str", "url: str, timeout: float")).toEqual([
+      expect.objectContaining({
+        qualifiedName: "Client",
+        kind: "class",
+        category: "contract-changed",
+        changedContractFacets: ["constructor"],
+        risk: "potentially-breaking",
+      }),
+    ]);
+    expect(
+      await compareInit("url: str", "url: str", "self.url = str(url)"),
+    ).toEqual([
+      expect.objectContaining({
+        qualifiedName: "Client",
+        kind: "class",
+        category: "implementation-changed",
       }),
     ]);
   });

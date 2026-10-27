@@ -1,4 +1,8 @@
 import { PythonParser } from "../../../src/parsers/python";
+import type {
+  ContractFacet,
+  ParserSymbolSnapshot,
+} from "../../../src/impact/types";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -6,6 +10,29 @@ import * as path from "path";
 describe("PythonParser", () => {
   const parser = new PythonParser();
   const fixturePath = path.resolve(__dirname, "../../fixtures/sample.py");
+
+  async function classSnapshot(source: string): Promise<ParserSymbolSnapshot> {
+    const snapshot = await parser.snapshot("src/client.py", source);
+    return snapshot.symbols.find(({ kind }) => kind === "class")!;
+  }
+
+  function changedFacets(
+    before: ParserSymbolSnapshot,
+    after: ParserSymbolSnapshot,
+  ): string[] {
+    return [
+      ...new Set([
+        ...Object.keys(before.contractFacets),
+        ...Object.keys(after.contractFacets),
+      ]),
+    ]
+      .filter(
+        (facet) =>
+          before.contractFacets[facet as ContractFacet] !==
+          after.contractFacets[facet as ContractFacet],
+      )
+      .sort();
+  }
 
   it("should parse a Python file", async () => {
     const result = await parser.parse(fixturePath);
@@ -1247,6 +1274,174 @@ class Service:
     );
   });
 
+  // Break caught: an added constructor parameter stays out of the class contract.
+  it("fingerprints an added constructor parameter as a constructor facet change", async () => {
+    const first = await classSnapshot(`class Service:
+    def __init__(self, a: int):
+        self.a = a
+`);
+    const changed = await classSnapshot(`class Service:
+    def __init__(self, a: int, b: str = ""):
+        self.a = a
+`);
+
+    expect(changedFacets(first, changed)).toEqual(["constructor"]);
+    expect(changed.contractFingerprint).not.toBe(first.contractFingerprint);
+    expect(first.arity).toEqual({ required: 1, total: 1 });
+    expect(changed.arity).toEqual({ required: 1, total: 2 });
+    expect(first.signature).toBe("class Service | __init__(a: int)");
+    expect(changed.signature).toBe(
+      "class Service | __init__(a: int, b: str='')",
+    );
+  });
+
+  // Break caught: constructor annotation changes are treated as implementation.
+  it("fingerprints a constructor annotation change as a constructor facet change", async () => {
+    const first = await classSnapshot(`class HTTPException(Exception):
+    def __init__(self, status_code: int, headers: Optional[dict[str, str]] = None) -> None:
+        self.headers = headers
+`);
+    const changed = await classSnapshot(`class HTTPException(Exception):
+    def __init__(self, status_code: int, headers: Optional[Mapping[str, str]] = None) -> None:
+        self.headers = headers
+`);
+
+    expect(changedFacets(first, changed)).toEqual(["constructor"]);
+    expect(changed.arity).toEqual(first.arity);
+    expect(changed.arity).toEqual({ required: 1, total: 2 });
+    expect(changed.signature).toBe(
+      "class HTTPException(Exception) | __init__(status_code: int, headers: Optional[Mapping[str, str]]=None) -> None",
+    );
+  });
+
+  // Break caught: a first explicit constructor leaves the class contract unchanged.
+  it("fingerprints a newly declared constructor as a constructor facet change", async () => {
+    const first = await classSnapshot(`class Service:
+    def run(self):
+        return 1
+`);
+    const changed = await classSnapshot(`class Service:
+    def __init__(self, a: int):
+        self.a = a
+
+    def run(self):
+        return 1
+`);
+
+    expect(changedFacets(first, changed)).toEqual(["constructor"]);
+    expect(first).not.toHaveProperty("arity");
+    expect(first.signature).toBe("class Service");
+    expect(changed.arity).toEqual({ required: 1, total: 1 });
+  });
+
+  // Break caught: overloaded constructors render the runtime implementation
+  // instead of the declared overloads.
+  it("renders overloaded constructors and spans their arity", async () => {
+    const service = await classSnapshot(`class Service:
+    @overload
+    def __init__(self, a: int) -> None: ...
+
+    @overload
+    def __init__(self, a: str, b: int) -> None: ...
+
+    def __init__(self, a, b=0, c=None):
+        self.a = a
+`);
+
+    expect(service.signature).toBe(
+      "class Service | __init__(a: int) -> None | __init__(a: str, b: int) -> None",
+    );
+    expect(service.arity).toEqual({ required: 1, total: 2 });
+  });
+
+  // Break caught: constructor body edits become class contract changes.
+  it("keeps constructor body changes out of the class contract", async () => {
+    const first = await classSnapshot(`class Service:
+    def __init__(self, a: int):
+        self.x = a
+`);
+    const changed = await classSnapshot(`class Service:
+    def __init__(self, a: int):
+        self.x = int(a)
+`);
+
+    expect(changedFacets(first, changed)).toEqual([]);
+    expect(changed.contractFingerprint).toBe(first.contractFingerprint);
+    expect(changed.signature).toBe(first.signature);
+    expect(changed.implementationFingerprint).not.toBe(
+      first.implementationFingerprint,
+    );
+  });
+
+  // Break caught: a constructor docstring edit becomes a class contract or
+  // implementation change.
+  it("keeps constructor docstring changes out of contract and implementation", async () => {
+    const first = await classSnapshot(`class Service:
+    def __init__(self, a: int):
+        self.x = a
+`);
+    const changed = await classSnapshot(`class Service:
+    def __init__(self, a: int):
+        """Create the service."""
+        self.x = a
+`);
+
+    expect(changedFacets(first, changed)).toEqual([]);
+    expect(changed.contractFingerprint).toBe(first.contractFingerprint);
+    expect(changed.implementationFingerprint).toBe(
+      first.implementationFingerprint,
+    );
+  });
+
+  // Break caught: private helpers enter the class contract with the constructor.
+  it("keeps added private helpers out of the class contract", async () => {
+    const first = await classSnapshot(`class Service:
+    def __init__(self, a: int):
+        self.x = a
+`);
+    const changed = await classSnapshot(`class Service:
+    def __init__(self, a: int):
+        self.x = a
+
+    def _helper(self):
+        return self.x
+`);
+
+    expect(changedFacets(first, changed)).toEqual([]);
+    expect(changed.contractFingerprint).toBe(first.contractFingerprint);
+    expect(changed.implementationFingerprint).not.toBe(
+      first.implementationFingerprint,
+    );
+  });
+
+  // Break caught: member or constructor declaration order enters the class contract.
+  it("keeps class member and constructor order out of the class contract", async () => {
+    const first = await classSnapshot(`class Service:
+    def __init__(self, a: int):
+        self.x = a
+
+    def run(self) -> int:
+        return 1
+
+    def stop(self) -> None:
+        return None
+`);
+    const changed = await classSnapshot(`class Service:
+    def stop(self) -> None:
+        return None
+
+    def run(self) -> int:
+        return 1
+
+    def __init__(self, a: int):
+        self.x = a
+`);
+
+    expect(changedFacets(first, changed)).toEqual([]);
+    expect(changed.contractFingerprint).toBe(first.contractFingerprint);
+    expect(changed.signature).toBe(first.signature);
+  });
+
   // Break caught: public class methods lack stable qualified symbol identities.
   it("emits qualified public class methods", async () => {
     const snapshot = await parser.snapshot(
@@ -1831,6 +2026,48 @@ def request() -> int:
               qualifiedName: "Service",
               signature: "class Service",
               contractFacets: {
+                inheritance: hash,
+                members: hash,
+                modifiers: hash,
+              },
+            },
+          ],
+        },
+      ],
+      [
+        "class without constructor facet",
+        {
+          ...validSnapshot,
+          symbols: [
+            {
+              ...Object.fromEntries(
+                Object.entries(validSymbol).filter(([key]) => key !== "arity"),
+              ),
+              kind: "class",
+              qualifiedName: "Service",
+              signature: "class Service",
+              contractFacets: {
+                inheritance: hash,
+                members: hash,
+                modifiers: hash,
+              },
+            },
+          ],
+        },
+      ],
+      [
+        "invalid class arity ordering",
+        {
+          ...validSnapshot,
+          symbols: [
+            {
+              ...validSymbol,
+              kind: "class",
+              qualifiedName: "Service",
+              signature: "class Service | __init__(a: int)",
+              arity: { required: 2, total: 1 },
+              contractFacets: {
+                constructor: hash,
                 inheritance: hash,
                 members: hash,
                 modifiers: hash,
