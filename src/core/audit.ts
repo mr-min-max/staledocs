@@ -197,6 +197,19 @@ const DEPENDENCY_FIELDS = [
   "peerDependencies",
 ] as const;
 const SOURCE_FILE = /\.(?:[cm]?[jt]sx?)$/u;
+const RELEASE_NOTES_BASENAME = /^release[-_ ]?notes(?:\.md)?$/iu;
+// Common documentation translation folders, with an optional region or script.
+const LANGUAGE_FOLDER =
+  /^(?:ar|az|bg|bn|ca|cs|da|de|el|es|et|fa|fi|fr|he|hi|hu|id|it|ja|ka|kk|ko|lt|lv|ms|nb|nl|no|pl|pt|ro|ru|sk|sl|sr|sv|ta|th|tl|tr|uk|ur|uz|vi|yo|zh)(?:[-_][A-Za-z]{2,4})?$/u;
+// Code examples under these folders often show the reader's own project.
+const GUIDE_FOLDERS = new Set(["docs", "doc", "documentation", "guide", "guides"]);
+// Files that describe this repository wherever they live.
+const REPOSITORY_FILES = new Set([
+  "agents.md",
+  "claude.md",
+  "contributing.md",
+  "copilot-instructions.md",
+]);
 const WORKSPACE_FLAG =
   /^(?:-w|-ws|--workspace|--workspaces|--filter|-F|-r|--recursive|--prefix|-C|--dir|--cwd)(?:=|$)/u;
 const SHELL_SEPARATOR = /&&|\|\||[;|]/u;
@@ -303,9 +316,14 @@ export async function auditRepository(
 
 /** Audits Markdown references against one repository revision without a diff. */
 export function assessDocumentationAudit(input: AuditInput): AuditReport {
-  const docs = input.docs.filter((doc) => !isChangelogDocument(doc.path));
   const tree =
     input.tree === undefined ? undefined : indexTree(input.tree);
+  const docs = input.docs.filter(
+    (doc) =>
+      !isChangelogDocument(doc.path) &&
+      !RELEASE_NOTES_BASENAME.test(posix.basename(doc.path)) &&
+      (tree === undefined || !isTranslatedCopy(doc.path, tree)),
+  );
   const packageDirectories = [...input.scripts.keys()]
     .filter((directory) => directory !== ".")
     .sort(compareStrings);
@@ -319,6 +337,11 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
   const allScripts = new Set(
     [...input.scripts.values()].flatMap((names) => names ?? []),
   );
+  let basenames: ReadonlySet<string> | undefined;
+  const hasNamesake = (index: TreeIndex, path: string): boolean => {
+    basenames ??= indexBasenames(index);
+    return basenames.has(posix.basename(path));
+  };
   const findings = new Map<string, AuditFinding>();
   const add = (finding: AuditFinding): void => {
     const key = [
@@ -337,6 +360,9 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
       input.manifestLimitReached === true
         ? undefined
         : knownScripts(input.scripts, packageDirectory, allScripts);
+    // In a guide, a missing script or path in a code example counts only
+    // with a rename signal; links are checked everywhere.
+    const guide = isGuideDocument(section.file);
     const location = {
       file: section.file,
       section: section.section,
@@ -351,7 +377,10 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
       }
       if (scripts !== undefined) {
         const missing = missingScript(evidence.text, scripts, binaries);
-        if (missing !== undefined) {
+        if (
+          missing !== undefined &&
+          (!guide || missing.closest !== undefined)
+        ) {
           add({
             ...location,
             kind: "script-missing",
@@ -382,7 +411,7 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
           ],
           packageRoots,
         );
-        if (path !== undefined) {
+        if (path !== undefined && (!guide || hasNamesake(tree, path))) {
           add({
             ...location,
             kind: "path-missing",
@@ -618,6 +647,38 @@ function indexTree(entries: ReadonlySet<string>): TreeIndex {
   return { entries, directories };
 }
 
+function indexBasenames(tree: TreeIndex): Set<string> {
+  const names = new Set<string>();
+  for (const path of [...tree.entries, ...tree.directories]) {
+    names.add(posix.basename(path));
+  }
+  return names;
+}
+
+/** A page under a language folder whose original exists without it or under `en`. */
+function isTranslatedCopy(path: string, tree: TreeIndex): boolean {
+  const parts = path.split("/");
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    if (!LANGUAGE_FOLDER.test(parts[index])) continue;
+    const before = parts.slice(0, index);
+    const after = parts.slice(index + 1);
+    if (
+      tree.entries.has([...before, ...after].join("/")) ||
+      tree.entries.has([...before, "en", ...after].join("/"))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isGuideDocument(path: string): boolean {
+  return (
+    GUIDE_FOLDERS.has(path.split("/", 1)[0]) &&
+    !REPOSITORY_FILES.has(posix.basename(path).toLowerCase())
+  );
+}
+
 function existsInTree(tree: TreeIndex, path: string): boolean {
   return tree.entries.has(path) || tree.directories.has(path);
 }
@@ -681,7 +742,11 @@ function missingScript(
   const match = SCRIPT_INVOCATION.exec(span);
   if (match === null) return undefined;
   const [invocation, manager, run, name] = match;
-  if (name.startsWith("-") || PACKAGE_MANAGER_COMMANDS.has(name)) {
+  // After `run` every name is a script, even `npm run deploy`.
+  if (
+    name.startsWith("-") ||
+    (run === undefined && PACKAGE_MANAGER_COMMANDS.has(name))
+  ) {
     return undefined;
   }
   if (SCRIPT_PLACEHOLDER.test(span.slice(invocation.length))) return undefined;
@@ -763,6 +828,8 @@ function missingSpanPath(
   }
   const path = normalizeSpanPath(span.replace(LOCATION_SUFFIX, ""));
   if (path === undefined) return undefined;
+  // A bare folder name such as `lib/` names a convention, not a file here.
+  if (!path.includes("/") && !PATH_EXTENSION.test(path)) return undefined;
   const prefixed = PATH_PREFIXES.some((prefix) => `${path}/`.startsWith(prefix));
   if (
     GENERATED_PREFIXES.some((prefix) => `${path}/`.startsWith(prefix)) ||

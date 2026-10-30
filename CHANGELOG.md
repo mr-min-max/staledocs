@@ -10,10 +10,16 @@ All notable changes to this project are documented in this file.
   `.html` page links, dependency and workspace bins run through pnpm, yarn,
   or bun (`pnpm tsx`, `pnpm vitest`), files run through bun, built-in
   commands such as `pnpm patch`, script names that continue into a
-  placeholder (`pnpm server:<name>`), and scripts or paths that a workspace
-  or Python package defines while a root document names them. The audit now
-  reads up to 1,000 package manifests instead of silently stopping at 50,
-  and sets `ignored.manifestLimitReached` past that bound.
+  placeholder (`pnpm server:<name>`), scripts or paths that a workspace or
+  Python package defines while a root document names them, and bare folder
+  names such as `lib/`. The audit now reads up to 1,000 package manifests
+  instead of silently stopping at 50, and sets `ignored.manifestLimitReached`
+  past that bound.
+- `staledocs audit` skips release notes and translated copies of existing
+  pages, and in documentation folders reports a code example's missing path
+  or script only with a rename signal (a same-named file elsewhere, or a
+  script within two edits). Links, root and package documents, and agent
+  instruction files are checked as before.
 - Update the README and guides after the `0.5.0-beta.1` publication: drop the
   "not published yet" notes, list the Codex plugin before the Claude Code
   plugin, and install from npm `latest`.

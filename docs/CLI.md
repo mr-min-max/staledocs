@@ -393,8 +393,11 @@ Review categories are `added`, `now exported`, `removed`, `no longer exported`, 
 Audits the Markdown in the working tree once, without a pull request or a Git
 range. It reads the documentation the planner discovers plus `AGENTS.md`,
 `CLAUDE.md`, and the `copilot-instructions.md` file under `.github` when
-present, and skips changelog-style files. Planning `exclude` globs and
-`.staledocsignore` apply. It uses no model, API key, or repository write.
+present. It skips changelog-style files, release notes (`release-notes.md`),
+and translated copies: a page under a language folder such as `docs/ja/` or
+`docs/zh-hant/` whose original exists without that folder or under `en/`.
+Planning `exclude` globs and `.staledocsignore` apply. It uses no model, API
+key, or repository write.
 
 ```bash
 staledocs audit
@@ -423,7 +426,17 @@ Rules, applied to inline code spans, fenced code lines, and link targets:
   directory, and every workspace and Python package directory. A line suffix
   (`src/client.ts:878-898`) or an anchor (`guide.md#usage`, `#L10-L20`) is
   dropped first. A link may leave out a trailing `.md` or write `.html`, as
-  static site generators allow, and a directory link may end with `/`.
+  static site generators allow, and a directory link may end with `/`. A
+  bare folder name such as `lib/` is not checked.
+
+In documents under `docs/`, `doc/`, `documentation/`, `guide/`, or `guides/`,
+code examples often show the reader's own project, so a missing path in a
+code span or fenced line is reported only when a file or folder of the same
+name exists elsewhere in the repository (a likely move), and a missing script
+only when `closest` names a defined script (a likely rename). Links in those
+documents, and every rule in root and package documents, `AGENTS.md`,
+`CLAUDE.md`, `CONTRIBUTING.md`, and `copilot-instructions.md`, are checked
+without that condition.
 - `member-missing`: a span exactly `Root.member`, such as `Client.fetchAll`,
   where `Root` is a public TypeScript class or interface whose members are all
   declared in one place and `member` is not among them. Members of any
