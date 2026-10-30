@@ -26,6 +26,9 @@ import { sanitizeDiagnostic } from "../security/scanner";
 
 export const AUDIT_SCHEMA_VERSION = "aidoc.audit.v1" as const;
 export const AUDIT_FINDING_LIMIT = 500;
+/** Package manifests read for scripts and bins; past it, script rules are skipped. */
+export const AUDIT_MANIFEST_LIMIT = 1000;
+const MANIFEST_READ_CONCURRENCY = 8;
 
 export type AuditFindingKind =
   | "member-missing"
@@ -58,6 +61,8 @@ export interface AuditReport {
   ignored?: {
     documentationLimitReached?: true;
     treeLimitReached?: true;
+    /** More package manifests than the audit reads, so script rules were skipped. */
+    manifestLimitReached?: true;
     /** The public entry walk hit its bound, so member rules were skipped. */
     boundaryLimitReached?: true;
   };
@@ -74,11 +79,16 @@ export interface AuditInput {
   tree: ReadonlySet<string> | undefined;
   /** Package directory ("." for the root) to script names; null when unreadable. */
   scripts: ReadonlyMap<string, readonly string[] | null>;
+  /** Bins that pnpm, yarn, and bun run without a script: dependencies and workspace bins. */
+  binaries?: ReadonlySet<string>;
+  /** Python package directories; relative paths may resolve against them. */
+  packageRoots?: readonly string[];
   docs: readonly DocumentationFile[];
   /** Closed public types by name; roots absent here get no member findings. */
   publicSymbols?: ReadonlyMap<string, AuditPublicType>;
   revision?: string;
   documentationLimitReached?: boolean;
+  manifestLimitReached?: boolean;
   boundaryLimitReached?: boolean;
 }
 
@@ -100,6 +110,30 @@ export const AGENT_INSTRUCTION_FILES = Object.freeze([
 const SCRIPT_INVOCATION =
   /^(npm|pnpm|yarn|bun)\s+(?:(run)\s+)?([A-Za-z0-9:_.-]+)/u;
 const PACKAGE_MANAGER_COMMANDS = new Set([
+  "approve-builds",
+  "bin",
+  "catalog",
+  "constraints",
+  "deploy",
+  "doctor",
+  "env",
+  "explain",
+  "fetch",
+  "import",
+  "licenses",
+  "node",
+  "npm",
+  "patch",
+  "patch-commit",
+  "patch-remove",
+  "plugin",
+  "root",
+  "search",
+  "self-update",
+  "set",
+  "setup",
+  "stage",
+  "unplug",
   "install",
   "i",
   "ci",
@@ -149,6 +183,20 @@ const PACKAGE_MANAGER_COMMANDS = new Set([
 // npm runs a script without `run` only for these lifecycle names.
 const NPM_SCRIPT_ALIASES = new Set(["test", "start", "stop", "restart", "build"]);
 const BUN_NATIVE_COMMANDS = new Set(["test", "build"]);
+// Bins whose names differ from the package that declares them.
+const PACKAGE_BIN_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  "@biomejs/biome": ["biome"],
+  "@changesets/cli": ["changeset"],
+  "@playwright/test": ["playwright"],
+  typescript: ["tsc", "tsserver"],
+};
+const DEPENDENCY_FIELDS = [
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+  "peerDependencies",
+] as const;
+const SOURCE_FILE = /\.(?:[cm]?[jt]sx?)$/u;
 const WORKSPACE_FLAG =
   /^(?:-w|-ws|--workspace|--workspaces|--filter|-F|-r|--recursive|--prefix|-C|--dir|--cwd)(?:=|$)/u;
 const SHELL_SEPARATOR = /&&|\|\||[;|]/u;
@@ -175,10 +223,11 @@ const GENERATED_PREFIXES = [
   ".git/",
 ];
 const NON_PATH_CHARACTERS = /[\s*?{}<>$~`]/u;
-// `path:12`, `path:12:3`, `path:878-898`, and GitHub anchors `path#L10-L20`.
-const LINE_SUFFIX = /(?::\d+(?:[:-]\d+)*|#L\d+(?:-L\d+)?)$/u;
-// A name that runs into a placeholder, brace list, or variable is a template.
-const SCRIPT_PLACEHOLDER = /^[<{[$%*]/u;
+// `path:12`, `path:12:3`, `path:878-898`, and anchors `path#L10-L20`, `page.md#usage`.
+const LOCATION_SUFFIX = /(?::\d+(?:[:-]\d+)*|#[^\s#/]*)$/u;
+// A name that runs into a placeholder, brace list, variable, or path segment
+// is a template or a file, not a script.
+const SCRIPT_PLACEHOLDER = /^[<{[$%*/]/u;
 const URI_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/u;
 const MEMBER_REFERENCE = /^([A-Z][A-Za-z0-9_]{3,})\.([A-Za-z_][A-Za-z0-9_]*)$/u;
 const TYPESCRIPT_SOURCE = /\.(?:ts|tsx|mts|cts)$/iu;
@@ -210,12 +259,14 @@ export async function auditRepository(
   }
   const reader = new GitSnapshotReader(cwd);
   const { root } = await reader.openWorkingTree();
-  const [tree, manifests, pythonEntries] = await Promise.all([
+  const [tree, listedManifests, pythonEntries] = await Promise.all([
     reader.listTree("head"),
-    reader.listPackageManifests("head"),
+    reader.listPackageManifests("head", AUDIT_MANIFEST_LIMIT + 1),
     reader.listPythonPackageEntries("head"),
   ]);
-  const scripts = await readPackageScripts(reader, manifests);
+  const manifestLimitReached = listedManifests.length > AUDIT_MANIFEST_LIMIT;
+  const manifests = listedManifests.slice(0, AUDIT_MANIFEST_LIMIT);
+  const packages = await readPackageManifests(reader, manifests);
   const surface = await readPublicTypes(reader, config.entry);
   let documentation;
   if (options.paths === undefined) {
@@ -239,10 +290,13 @@ export async function auditRepository(
   }
   return assessDocumentationAudit({
     tree,
-    scripts,
+    scripts: packages.scripts,
+    binaries: packages.binaries,
+    packageRoots: pythonEntries.map((path) => posix.dirname(path)),
     docs: documentation.files,
     publicSymbols: surface.types,
     documentationLimitReached: documentation.limitReached,
+    manifestLimitReached,
     boundaryLimitReached: surface.limitReached,
   });
 }
@@ -255,6 +309,16 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
   const packageDirectories = [...input.scripts.keys()]
     .filter((directory) => directory !== ".")
     .sort(compareStrings);
+  const packageRoots = [
+    ...new Set([...packageDirectories, ...(input.packageRoots ?? [])]),
+  ]
+    .filter((directory) => directory !== ".")
+    .sort(compareStrings);
+  const binaries = input.binaries ?? new Set<string>();
+  // A document may describe commands run inside any workspace package.
+  const allScripts = new Set(
+    [...input.scripts.values()].flatMap((names) => names ?? []),
+  );
   const findings = new Map<string, AuditFinding>();
   const add = (finding: AuditFinding): void => {
     const key = [
@@ -269,7 +333,10 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
 
   for (const section of scanDocumentationEvidence([...docs])) {
     const packageDirectory = nearestPackage(section.file, packageDirectories);
-    const scripts = knownScripts(input.scripts, packageDirectory);
+    const scripts =
+      input.manifestLimitReached === true
+        ? undefined
+        : knownScripts(input.scripts, packageDirectory, allScripts);
     const location = {
       file: section.file,
       section: section.section,
@@ -283,7 +350,7 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
         continue;
       }
       if (scripts !== undefined) {
-        const missing = missingScript(evidence.text, scripts);
+        const missing = missingScript(evidence.text, scripts, binaries);
         if (missing !== undefined) {
           add({
             ...location,
@@ -306,10 +373,15 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
         });
       }
       if (tree !== undefined) {
-        const path = missingSpanPath(evidence.text, tree, [
-          posix.dirname(section.file),
-          ...(packageDirectory === undefined ? [] : [packageDirectory]),
-        ]);
+        const path = missingSpanPath(
+          evidence.text,
+          tree,
+          [
+            posix.dirname(section.file),
+            ...(packageDirectory === undefined ? [] : [packageDirectory]),
+          ],
+          packageRoots,
+        );
         if (path !== undefined) {
           add({
             ...location,
@@ -323,9 +395,9 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
     if (tree === undefined) continue;
     for (const target of section.linkTargets) {
       const path = target.endsWith("/") ? target.slice(0, -1) : target;
-      if (path.length === 0 || existsInTree(tree, path)) continue;
+      if (path.length === 0 || linkExists(tree, path)) continue;
       const decoded = decodeTarget(path);
-      if (decoded !== undefined && existsInTree(tree, decoded)) continue;
+      if (decoded !== undefined && linkExists(tree, decoded)) continue;
       add({
         ...location,
         kind: "path-missing",
@@ -355,6 +427,9 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
       ? { documentationLimitReached: true as const }
       : {}),
     ...(input.tree === undefined ? { treeLimitReached: true as const } : {}),
+    ...(input.manifestLimitReached === true
+      ? { manifestLimitReached: true as const }
+      : {}),
     ...(input.boundaryLimitReached === true
       ? { boundaryLimitReached: true as const }
       : {}),
@@ -438,48 +513,90 @@ function missingMember(
   return span;
 }
 
-async function readPackageScripts(
-  reader: GitSnapshotReader,
-  manifests: readonly string[],
-): Promise<Map<string, readonly string[] | null>> {
-  const scripts = new Map<string, readonly string[] | null>();
-  for (const manifest of manifests) {
-    scripts.set(
-      posix.dirname(manifest),
-      await readManifestScripts(reader, manifest),
-    );
-  }
-  return scripts;
+interface PackageManifest {
+  scripts: readonly string[] | null;
+  binaries: readonly string[];
 }
 
-async function readManifestScripts(
+async function readPackageManifests(
+  reader: GitSnapshotReader,
+  manifests: readonly string[],
+): Promise<{
+  scripts: Map<string, readonly string[] | null>;
+  binaries: Set<string>;
+}> {
+  const read: PackageManifest[] = [];
+  for (
+    let start = 0;
+    start < manifests.length;
+    start += MANIFEST_READ_CONCURRENCY
+  ) {
+    read.push(
+      ...(await Promise.all(
+        manifests
+          .slice(start, start + MANIFEST_READ_CONCURRENCY)
+          .map((manifest) => readManifest(reader, manifest)),
+      )),
+    );
+  }
+  const scripts = new Map<string, readonly string[] | null>();
+  const binaries = new Set<string>();
+  manifests.forEach((manifest, index) => {
+    scripts.set(posix.dirname(manifest), read[index].scripts);
+    for (const binary of read[index].binaries) binaries.add(binary);
+  });
+  return { scripts, binaries };
+}
+
+async function readManifest(
   reader: GitSnapshotReader,
   manifest: string,
-): Promise<readonly string[] | null> {
+): Promise<PackageManifest> {
   let parsed: unknown;
   try {
     const source = await reader.readAt("head", manifest);
-    if (source === undefined) return null;
+    if (source === undefined) return { scripts: null, binaries: [] };
     parsed = JSON.parse(source);
   } catch {
-    return null;
+    return { scripts: null, binaries: [] };
   }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return null;
-  }
-  const declared = (parsed as Record<string, unknown>).scripts;
+  if (!isRecord(parsed)) return { scripts: null, binaries: [] };
+  return { scripts: manifestScripts(parsed), binaries: manifestBins(parsed) };
+}
+
+function manifestScripts(
+  manifest: Record<string, unknown>,
+): readonly string[] | null {
+  const declared = manifest.scripts;
   if (declared === undefined) return [];
-  if (
-    typeof declared !== "object" ||
-    declared === null ||
-    Array.isArray(declared)
-  ) {
-    return null;
-  }
+  if (!isRecord(declared)) return null;
   return Object.entries(declared)
     .filter(([, command]) => typeof command === "string")
     .map(([name]) => name)
     .sort(compareStrings);
+}
+
+/** Bins a package manager can run from this manifest's dependencies or own `bin`. */
+function manifestBins(manifest: Record<string, unknown>): string[] {
+  const bins: string[] = [];
+  for (const field of DEPENDENCY_FIELDS) {
+    const dependencies = manifest[field];
+    if (!isRecord(dependencies)) continue;
+    for (const name of Object.keys(dependencies)) {
+      bins.push(name, ...(PACKAGE_BIN_ALIASES[name] ?? []));
+    }
+  }
+  const { bin, name } = manifest;
+  if (isRecord(bin)) {
+    bins.push(...Object.keys(bin));
+  } else if (typeof bin === "string" && typeof name === "string") {
+    bins.push(name.slice(name.lastIndexOf("/") + 1));
+  }
+  return bins;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 interface TreeIndex {
@@ -503,6 +620,16 @@ function indexTree(entries: ReadonlySet<string>): TreeIndex {
 
 function existsInTree(tree: TreeIndex, path: string): boolean {
   return tree.entries.has(path) || tree.directories.has(path);
+}
+
+/** Static site generators link a page as `page`, `page.html`, or `page.md`. */
+function linkExists(tree: TreeIndex, path: string): boolean {
+  if (existsInTree(tree, path)) return true;
+  const basename = posix.basename(path);
+  if (basename.endsWith(".html")) {
+    return tree.entries.has(`${path.slice(0, -".html".length)}.md`);
+  }
+  return !basename.includes(".") && tree.entries.has(`${path}.md`);
 }
 
 function decodeTarget(target: string): string | undefined {
@@ -533,19 +660,22 @@ function nearestPackage(
 function knownScripts(
   scripts: ReadonlyMap<string, readonly string[] | null>,
   packageDirectory: string | undefined,
+  allScripts: ReadonlySet<string>,
 ): ReadonlySet<string> | undefined {
   const root = scripts.get(".");
   const scoped =
     packageDirectory === undefined ? undefined : scripts.get(packageDirectory);
-  // An unreadable manifest could hold any script, so nothing is reported.
+  // An unreadable root or own manifest could hold any script, so nothing is
+  // reported; an unreadable manifest elsewhere, often a test fixture, is not.
   if (root === null || scoped === null) return undefined;
   if (root === undefined && scoped === undefined) return undefined;
-  return new Set([...(root ?? []), ...(scoped ?? [])]);
+  return allScripts;
 }
 
 function missingScript(
   text: string,
   scripts: ReadonlySet<string>,
+  binaries: ReadonlySet<string>,
 ): { value: string; closest?: string } | undefined {
   const span = text.trimStart();
   const match = SCRIPT_INVOCATION.exec(span);
@@ -558,6 +688,16 @@ function missingScript(
   if (run === undefined) {
     if (manager === "npm" && !NPM_SCRIPT_ALIASES.has(name)) return undefined;
     if (manager === "bun" && BUN_NATIVE_COMMANDS.has(name)) return undefined;
+  }
+  // bun runs files; pnpm (without `run`), yarn, and bun run dependency bins.
+  if (manager === "bun" && SOURCE_FILE.test(name)) return undefined;
+  if (
+    binaries.has(name) &&
+    (manager === "yarn" ||
+      manager === "bun" ||
+      (manager === "pnpm" && run === undefined))
+  ) {
+    return undefined;
   }
   const rest = span.slice(invocation.length).split(SHELL_SEPARATOR, 1)[0];
   if (rest.split(/\s+/u).some((token) => WORKSPACE_FLAG.test(token))) {
@@ -609,6 +749,7 @@ function missingSpanPath(
   text: string,
   tree: TreeIndex,
   bases: readonly string[],
+  packageRoots: readonly string[],
 ): string | undefined {
   const span = text.trim();
   if (
@@ -620,7 +761,7 @@ function missingSpanPath(
   ) {
     return undefined;
   }
-  const path = normalizeSpanPath(span.replace(LINE_SUFFIX, ""));
+  const path = normalizeSpanPath(span.replace(LOCATION_SUFFIX, ""));
   if (path === undefined) return undefined;
   const prefixed = PATH_PREFIXES.some((prefix) => `${path}/`.startsWith(prefix));
   if (
@@ -630,7 +771,8 @@ function missingSpanPath(
     return undefined;
   }
   if (!prefixed && !PATH_EXTENSION.test(path)) return undefined;
-  const resolutions = ["", ...new Set(bases)]
+  // A root document may describe any workspace or Python package's layout.
+  const resolutions = ["", ...new Set([...bases, ...packageRoots])]
     .map((base) => normalizeSpanPath(posix.join(base, path)))
     .filter((candidate): candidate is string => candidate !== undefined);
   if (resolutions.some((candidate) => existsInTree(tree, candidate))) {
