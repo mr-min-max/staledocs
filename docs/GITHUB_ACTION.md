@@ -24,13 +24,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: mr-min-max/staledocs@v0.5.0-beta.1
+      - uses: mr-min-max/staledocs@v0.5.0-beta.2
         with:
           mode: review
           fail-on: none
 ```
 
-The examples use the immutable `v0.5.0-beta.1` tag. The moving `v0` tag points to the same release.
+The examples use the immutable `v0.5.0-beta.2` tag. The moving `v0` tag points to the current release.
 
 The comment starts with a hidden marker and lists changed signatures, affected
 sections, and whether each section changed in the pull request:
@@ -121,7 +121,7 @@ Check mode is provider-free and reports only whether selected documents changed 
 public symbols they directly mention. It does not compare prose correctness.
 
 ```yaml
-- uses: mr-min-max/staledocs@v0.5.0-beta.1
+- uses: mr-min-max/staledocs@v0.5.0-beta.2
   with:
     mode: check
     since: ${{ github.event.pull_request.base.sha }}
@@ -136,7 +136,7 @@ The `commands` input is a comma-separated list of `readme`, `api`, `changelog`, 
 Generate mode remains available for provider-backed documentation creation:
 
 ```yaml
-- uses: mr-min-max/staledocs@v0.5.0-beta.1
+- uses: mr-min-max/staledocs@v0.5.0-beta.2
   with:
     mode: generate
     provider: openai

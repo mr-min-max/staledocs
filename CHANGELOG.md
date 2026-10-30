@@ -2,8 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.5.0-beta.2] - 2026-10-30
 
+- Prepare `0.5.0-beta.2`: bump the package, `server.json`, both plugin
+  manifests and MCP launchers, the Action and pre-commit examples, and the
+  integration guides; add the release notes. Public status lines name the
+  current release and say that npm `latest`, npm `beta`, and the Action `v0`
+  tag point to the current release, so they stay true after publication.
+- `test:npm-published` checks the published `0.5.0-beta.1`; it still expected
+  `0.4.0-beta.1`, so `test:public-beta` failed after the last promotion. The
+  release procedure now moves it in the post-publication pull request.
 - Cut `staledocs audit` false positives found on popular repositories: a
   directory link with a trailing slash, a path with a line range or heading
   anchor (`src/client.ts:878-898`, `guide.md#usage`), extensionless and

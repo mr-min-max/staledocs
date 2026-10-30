@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {fetch-depth: 0}
-      - uses: mr-min-max/staledocs@v0.5.0-beta.1
+      - uses: mr-min-max/staledocs@v0.5.0-beta.2
         with:
           mode: review
           fail-on: none
@@ -127,7 +127,7 @@ TypeScript, JavaScript, and Python are supported. A public symbol is one reachab
 
 ## Status and links
 
-StaleDocs `0.5.0-beta.1` is published. npm `latest`, npm `beta`, and the GitHub Action `v0` tag all use this release, and the official MCP Registry lists it as `io.github.mr-min-max/staledocs`.
+StaleDocs `0.5.0-beta.2` is the current release. npm `latest`, npm `beta`, and the GitHub Action `v0` tag point to the current release, and the official MCP Registry lists it as `io.github.mr-min-max/staledocs`.
 
 [![npm](https://img.shields.io/npm/v/staledocs)](https://www.npmjs.com/package/staledocs)
 [![CI](https://github.com/mr-min-max/staledocs/actions/workflows/ci.yml/badge.svg)](https://github.com/mr-min-max/staledocs/actions/workflows/ci.yml)

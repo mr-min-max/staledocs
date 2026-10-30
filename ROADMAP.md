@@ -2,11 +2,13 @@
 
 ## Now
 
-StaleDocs `0.5.0-beta.1` is published on npm and in the official MCP Registry as
-`io.github.mr-min-max/staledocs`. It adds `staledocs audit` with the
-`audit_documentation` MCP tool, the read-only `review_documentation_impact` MCP
-tool, stale findings only for contract changes, Python constructor checks, and
-Codex and Claude Code plugin marketplaces. `validate_documentation_draft` no
+StaleDocs `0.5.0-beta.2` is the current release on npm and in the official MCP
+Registry as `io.github.mr-min-max/staledocs`. It cuts `staledocs audit` false
+positives found on popular repositories. `0.5.0-beta.1` added `staledocs audit`
+with the `audit_documentation` MCP tool, the read-only
+`review_documentation_impact` MCP tool, stale findings only for contract
+changes, Python constructor checks, and Codex and Claude Code plugin
+marketplaces. `validate_documentation_draft` no
 longer needs the preparation digest
 ([issue #49](https://github.com/mr-min-max/staledocs/issues/49) is closed).
 
