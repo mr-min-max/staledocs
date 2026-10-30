@@ -1,7 +1,6 @@
 # StaleDocs CLI reference
 
-This is the complete command catalogue for the `0.5.0-beta.1` release candidate,
-which is not published yet; the npm `beta` channel stays on the previous beta until then.
+This is the complete command catalogue for StaleDocs `0.5.0-beta.1`.
 The executable is `staledocs`. For provider credentials, subscription and API
 billing boundaries, repository safety details, and current caveats, see the
 [Public Beta guide](./PUBLIC_BETA.md), [Limitations](./LIMITATIONS.md), and

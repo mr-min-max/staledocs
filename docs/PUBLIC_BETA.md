@@ -1,6 +1,6 @@
 # StaleDocs Public Beta
 
-`0.5.0-beta.1` is the StaleDocs release candidate and is not published yet. It uses the unscoped `staledocs` package and executable; the npm `beta` channel below stays on the previous published beta until publication.
+`0.5.0-beta.1` is the current StaleDocs public beta. It uses the unscoped `staledocs` package and executable; npm `latest` and `beta` both point to it.
 
 StaleDocs checks documentation drift in pull requests through deterministic AST analysis for TypeScript, JavaScript, and Python. It reports changed public symbols, before and after signatures, sections that mention them, and optional `docs-stale` and `breaking-change` labels.
 
