@@ -30,7 +30,7 @@ jobs:
           fail-on: none
 ```
 
-The examples use the immutable `v0.5.0-beta.1` tag of the release candidate, which exists only after publication. Until then, the moving `v0` tag stays on the previous published beta; the owner moves it to this release after publication.
+The examples use the immutable `v0.5.0-beta.1` tag. The moving `v0` tag points to the same release.
 
 The comment starts with a hidden marker and lists changed signatures, affected
 sections, and whether each section changed in the pull request:

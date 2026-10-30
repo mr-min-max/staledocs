@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Update the README and guides after the `0.5.0-beta.1` publication: drop the
+  "not published yet" notes, list the Codex plugin before the Claude Code
+  plugin, and install from npm `latest`.
 - Add `--package staledocs@<version>` to `scripts/codex-fix-path.mjs`, so the
   Codex fix-path check can run against a published package started with
   `npx`; run records and `summary.json` name the server they used.

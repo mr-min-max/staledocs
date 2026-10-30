@@ -8,7 +8,7 @@ Formerly aidoc.
 
 StaleDocs reads your code, finds public API changes in a pull request, and tells you which documentation sections now describe the old behavior.
 
-[Website](https://staledocs.com) · [GitHub Action setup](./docs/GITHUB_ACTION.md)
+[Website](https://staledocs.com) · [GitHub Action setup](./docs/GITHUB_ACTION.md) · [Codex plugin](#codex-plugin)
 
 ## Add to a repository in one file
 
@@ -43,7 +43,7 @@ No model, no API key, no writes. It is deterministic AST analysis.
 Install the command:
 
 ```bash
-npm install -g staledocs@beta
+npm install -g staledocs
 ```
 
 `staledocs review` reports documentation impact for a pull request.
@@ -61,7 +61,7 @@ under `.github`, the files coding agents read first. It needs no pull request.
 The command is new in `0.5.0-beta.1`.
 
 ```bash
-npm install -g staledocs@beta
+npm install -g staledocs
 staledocs audit
 ```
 
@@ -77,20 +77,6 @@ README.md > Usage: script-missing "npm run bulid" (closest: build)
 
 ## Fix the docs with your assistant
 
-### Claude Code plugin
-
-Start Claude Code in your Git worktree, then run:
-
-```text
-/plugin marketplace add mr-min-max/staledocs
-/plugin install staledocs@staledocs
-```
-
-Use `/staledocs:check` for drift signals, `/staledocs:review` for the PR report,
-or `/staledocs:maintain-documentation` for a validated draft. Requires
-Node.js >=22.12.0 and npm/npx. This repository hosts its own plugin marketplace;
-it is not an approved Anthropic directory listing.
-
 ### Codex plugin
 
 Start Codex in your Git worktree, then run:
@@ -104,6 +90,20 @@ In a new session, type `$` and pick `staledocs:check`, `staledocs:review`, or
 `staledocs:maintain-documentation` (or open `/skills`). Requires
 Node.js >=22.12.0 and npm/npx. This repository hosts its own plugin
 marketplace; it is not a listing in OpenAI's plugin directory.
+
+### Claude Code plugin
+
+Start Claude Code in your Git worktree, then run:
+
+```text
+/plugin marketplace add mr-min-max/staledocs
+/plugin install staledocs@staledocs
+```
+
+Use `/staledocs:check` for drift signals, `/staledocs:review` for the PR report,
+or `/staledocs:maintain-documentation` for a validated draft. Requires
+Node.js >=22.12.0 and npm/npx. This repository hosts its own plugin marketplace;
+it is not an approved Anthropic directory listing.
 
 ### Manual MCP
 
@@ -119,9 +119,7 @@ See the [Codex guide](./docs/integrations/codex.md) and [Claude guide](./docs/in
 
 ## Languages
 
-TypeScript, JavaScript, and Python are supported. A public symbol is one reachable from the package entry; see [LIMITATIONS.md](./docs/LIMITATIONS.md).
-
-See [LIMITATIONS.md](./docs/LIMITATIONS.md) for syntax and discovery caveats.
+TypeScript, JavaScript, and Python are supported. A public symbol is one reachable from the package entry; see [LIMITATIONS.md](./docs/LIMITATIONS.md) for syntax and discovery caveats.
 
 ## Legacy generators
 
@@ -129,9 +127,9 @@ See [LIMITATIONS.md](./docs/LIMITATIONS.md) for syntax and discovery caveats.
 
 ## Status and links
 
-Release candidate `0.5.0-beta.1` is not published yet. Until it is, npm `latest`, npm `beta`, and the GitHub Action `v0` tag stay on the previous published beta, and the `v0.5.0-beta.1` pins above and in the plugins resolve only after publication.
+StaleDocs `0.5.0-beta.1` is published. npm `latest`, npm `beta`, and the GitHub Action `v0` tag all use this release, and the official MCP Registry lists it as `io.github.mr-min-max/staledocs`.
 
-[![npm](https://img.shields.io/npm/v/staledocs/beta?label=npm%20beta)](https://www.npmjs.com/package/staledocs)
+[![npm](https://img.shields.io/npm/v/staledocs)](https://www.npmjs.com/package/staledocs)
 [![CI](https://github.com/mr-min-max/staledocs/actions/workflows/ci.yml/badge.svg)](https://github.com/mr-min-max/staledocs/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3FB950.svg)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D22.12-58A6FF.svg)](https://nodejs.org/)
