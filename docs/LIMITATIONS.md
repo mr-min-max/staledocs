@@ -13,10 +13,17 @@ revision. It does not check bare symbol names, command-line flags,
 configuration keys, prose, or generated paths under `dist/`, `build/`, `out/`,
 `coverage/`, and `node_modules/`. Links written as HTML or reference-style
 definitions, commands behind a shell prompt such as `$ npm test`, and text
-before a document's first heading are not read. A path that names a file in
-another repository, such as an example project's source file, is reported
-when no such file exists here; write such paths with a placeholder, as in
-`src/<name>.ts`. Scripts are read from `package.json` manifests only; a
+before a document's first heading are not read. Release notes and translated
+copies of existing pages are skipped, so a stale link that exists only in a
+translation is not reported. In documentation folders such as `docs/`, a code
+example's missing path or script is reported only when a same-named file or a
+script within two edits exists, so a deleted file that only a guide's code
+example names, with no replacement, is not reported there. Elsewhere, a path
+that names a file in another repository, such as an example project's source
+file, is reported when no such file exists here; write such paths with a
+placeholder, as in `src/<name>.ts`. A path in a negative example ("do not
+create `src/x.ts`") is reported too. Generated or vendored Markdown, such as
+API reference output, can be left out with `.staledocsignore`. Scripts are read from `package.json` manifests only; a
 document under an unreadable manifest gets no script findings. A script or
 path is accepted when any workspace package has it, so a root document that
 names a script only one package defines is not reported. Bins are known from
