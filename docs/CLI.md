@@ -415,7 +415,7 @@ Rules, applied to inline code spans, fenced code lines, and link targets:
   runs, and names that continue into a placeholder such as
   `pnpm server:<name>` are not script names. pnpm without `run`, yarn, and bun
   also run bins: a name that a manifest declares as a dependency or a `bin` is
-  not reported for them (`pnpm tsx`, `pnpm vitest`, `pnpm tsc`), and bun runs
+  not reported for them (`pnpm tsc`, `pnpm jest`, `yarn eslint .`), and bun runs
   source files (`bun run server.ts`). `npm run` and `pnpm run` run scripts
   only. `closest` names a defined script within two edits.
 - `path-missing`: a relative link target, or a code span that looks like a
