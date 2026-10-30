@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+- Record the `0.5.0-beta.2` publication in its release notes and move
+  `test:npm-published` to the published `0.5.0-beta.2`.
+
 ## [0.5.0-beta.2] - 2026-10-30
 
 - Prepare `0.5.0-beta.2`: bump the package, `server.json`, both plugin
