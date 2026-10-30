@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Cut `staledocs audit` false positives found on popular repositories: a
+  directory link with a trailing slash, a path with a line range or heading
+  anchor (`src/client.ts:878-898`, `guide.md#usage`), extensionless and
+  `.html` page links, dependency and workspace bins run through pnpm, yarn,
+  or bun (`pnpm tsx`, `pnpm vitest`), files run through bun, built-in
+  commands such as `pnpm patch`, script names that continue into a
+  placeholder (`pnpm server:<name>`), and scripts or paths that a workspace
+  or Python package defines while a root document names them. The audit now
+  reads up to 1,000 package manifests instead of silently stopping at 50,
+  and sets `ignored.manifestLimitReached` past that bound.
 - Update the README and guides after the `0.5.0-beta.1` publication: drop the
   "not published yet" notes, list the Codex plugin before the Claude Code
   plugin, and install from npm `latest`.

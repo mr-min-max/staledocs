@@ -406,16 +406,24 @@ staledocs audit --path AGENTS.md --path docs/guide.md
 Rules, applied to inline code spans, fenced code lines, and link targets:
 
 - `script-missing`: a span such as `npm run build`, `npm test`, `pnpm lint`,
-  `yarn build`, or `bun run dev` names a script that neither the root
-  `package.json` nor the document's nearest package manifest defines. Package
-  manager commands, flags, and workspace-targeted runs are not script names.
-  `closest` names a defined script within two edits.
+  `yarn build`, or `bun run dev` names a script that no `package.json` in the
+  repository defines, since root documents often describe commands run inside
+  a workspace package. Package manager commands, flags, workspace-targeted
+  runs, and names that continue into a placeholder such as
+  `pnpm server:<name>` are not script names. pnpm without `run`, yarn, and bun
+  also run bins: a name that a manifest declares as a dependency or a `bin` is
+  not reported for them (`pnpm tsx`, `pnpm vitest`, `pnpm tsc`), and bun runs
+  source files (`bun run server.ts`). `npm run` and `pnpm run` run scripts
+  only. `closest` names a defined script within two edits.
 - `path-missing`: a relative link target, or a code span that looks like a
   repository path, names no file or directory in the working tree. A span
   counts when it starts with a source directory such as `src/`, `docs/`,
   `tests/`, or `.github/`, or ends with a source, Markdown, or configuration
   extension; spans are resolved from the repository root, the document's
-  directory, and its package directory.
+  directory, and every workspace and Python package directory. A line suffix
+  (`src/client.ts:878-898`) or an anchor (`guide.md#usage`, `#L10-L20`) is
+  dropped first. A link may leave out a trailing `.md` or write `.html`, as
+  static site generators allow, and a directory link may end with `/`.
 - `member-missing`: a span exactly `Root.member`, such as `Client.fetchAll`,
   where `Root` is a public TypeScript class or interface whose members are all
   declared in one place and `member` is not among them. Members of any
@@ -461,6 +469,8 @@ Findings are sorted by file, section slug, kind, and value. At most 500 are
 listed; `summary.findings` keeps the full count and `summary.truncated` is set.
 The tree listing stops at 200,000 entries or 32 MiB of Git output per listing;
 past that bound path rules are skipped and `ignored.treeLimitReached` is set.
+Up to 1,000 `package.json` manifests are read for scripts and bins; past that
+bound script rules are skipped and `ignored.manifestLimitReached` is set.
 Documentation discovery limits match the planner's and set
 `ignored.documentationLimitReached`.
 
