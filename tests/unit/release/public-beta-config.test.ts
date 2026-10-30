@@ -66,9 +66,9 @@ describe("public beta repository configuration", () => {
       "utf8",
     );
     const script = packageJson.scripts["test:npm-published"];
-    expect(packageJson.version).toBe("0.5.0-beta.1");
+    expect(packageJson.version).toBe("0.5.0-beta.2");
     expect(script).toContain(
-      "--version 0.4.0-beta.1 --latest 0.4.0-beta.1",
+      "--version 0.5.0-beta.1 --latest 0.5.0-beta.1",
     );
     expect(packageJson.scripts["test:storefront"]).toBe(
       "node --test tests/e2e/storefront-demo.test.mjs tests/e2e/storefront-assets.test.mjs",
@@ -107,6 +107,7 @@ describe("public beta repository configuration", () => {
       "docs/RELEASING.md",
       "docs/releases/v0.4.0-beta.1.md",
       "docs/releases/v0.5.0-beta.1.md",
+      "docs/releases/v0.5.0-beta.2.md",
     ]) {
       expect(fs.existsSync(path.join(root, file))).toBe(true);
     }
@@ -157,6 +158,7 @@ describe("public beta repository configuration", () => {
       "docs/RELEASING.md",
       "docs/releases/v0.4.0-beta.1.md",
       "docs/releases/v0.5.0-beta.1.md",
+      "docs/releases/v0.5.0-beta.2.md",
     ]
       .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
       .join("\n");
