@@ -266,10 +266,12 @@ describe("assessDocumentationAudit true positives", () => {
           "# Lib",
           "",
           "`src/core/old.ts:878-898` `src/core/gone.ts#L3-L7`",
+          "`docs/removed.md#install`",
           "",
         ].join("\n"),
       }),
     ).toEqual([
+      ["README.md", "path-missing", "docs/removed.md"],
       ["README.md", "path-missing", "src/core/gone.ts"],
       ["README.md", "path-missing", "src/core/old.ts"],
     ]);
@@ -459,6 +461,7 @@ describe("assessDocumentationAudit false positives", () => {
           "",
           "`src/client.ts:878-898` `src/client.ts:1-2` `src/index.ts:3:7-3:9`",
           "`src/client.ts#L10` `src/client.ts#L10-L20`",
+          "`docs/guide-v2.md#install` `src/index.ts#exports`",
           "",
         ].join("\n"),
       }),
