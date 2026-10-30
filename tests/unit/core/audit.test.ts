@@ -230,6 +230,62 @@ describe("assessDocumentationAudit true positives", () => {
     ]);
   });
 
+  it("TP14 audits documents that are neither release notes nor translations", () => {
+    expect(
+      compact(
+        {
+          "docs/release-guide.md": "# Releasing\n\nRun `npm run bulid`.\n",
+          "docs/ja/only.md": "# Only\n\nSee [x](./missing.md).\n",
+          "docs/ui/guide-v2.md": "# UI\n\nSee [x](./missing.md).\n",
+        },
+        {
+          tree: new Set([
+            ...TREE,
+            "docs/release-guide.md",
+            "docs/ja/only.md",
+            "docs/ui/guide-v2.md",
+          ]),
+        },
+      ),
+    ).toEqual([
+      ["docs/ja/only.md", "path-missing", "docs/ja/missing.md"],
+      ["docs/release-guide.md", "script-missing", "npm run bulid", "build"],
+      ["docs/ui/guide-v2.md", "path-missing", "docs/ui/missing.md"],
+    ]);
+  });
+
+  it("TP15 reports moved files, near script names, and links in guides", () => {
+    expect(
+      compact({
+        "docs/guide-v2.md": [
+          "# Guide",
+          "",
+          "`src/core/client.ts` `npm run bulid` [old](./old.md)",
+          "",
+        ].join("\n"),
+        "docs/AGENTS.md": "# Agents\n\n`src/foo.test.ts` `npm run deploy`\n",
+        "README.md": "# Lib\n\n`src/foo.test.ts` `npm run deploy`\n",
+      }),
+    ).toEqual([
+      ["README.md", "path-missing", "src/foo.test.ts"],
+      ["README.md", "script-missing", "npm run deploy"],
+      ["docs/AGENTS.md", "path-missing", "src/foo.test.ts"],
+      ["docs/AGENTS.md", "script-missing", "npm run deploy"],
+      ["docs/guide-v2.md", "path-missing", "docs/old.md"],
+      ["docs/guide-v2.md", "path-missing", "src/core/client.ts"],
+      ["docs/guide-v2.md", "script-missing", "npm run bulid", "build"],
+    ]);
+  });
+
+  it("TP16 still reports a missing file under a source directory", () => {
+    expect(
+      compact({ "README.md": "# Lib\n\n`scripts/release.sh` `lib/old.js`\n" }),
+    ).toEqual([
+      ["README.md", "path-missing", "lib/old.js"],
+      ["README.md", "path-missing", "scripts/release.sh"],
+    ]);
+  });
+
   it("TP13 reports extensionless and .html links with no Markdown page", () => {
     expect(
       compact({
@@ -564,6 +620,66 @@ describe("assessDocumentationAudit false positives", () => {
         },
         { scripts: new Map([[".", ["lint"]]]) },
       ),
+    ).toEqual([]);
+  });
+
+  it("FP14 skips release notes like changelogs", () => {
+    const stale = "# Notes\n\nRun `npm run bulid`, see `src/core/old.ts`.\n";
+    expect(
+      compact({
+        "RELEASE_NOTES.md": stale,
+        "docs/en/docs/release-notes.md": stale,
+        "docs/Release-Notes.md": stale,
+      }),
+    ).toEqual([]);
+  });
+
+  it("FP15 skips a translated copy of an existing page", () => {
+    const stale = "# Page\n\nSee [x](./missing.md) and `src/core/old.ts`.\n";
+    expect(
+      compact(
+        {
+          "docs/ja/guide-v2.md": stale,
+          "docs/zh-hant/docs/index.md": stale,
+          "docs/pt_BR/guide-v2.md": stale,
+        },
+        {
+          tree: new Set([
+            ...TREE,
+            "docs/en/docs/index.md",
+            "docs/ja/guide-v2.md",
+            "docs/zh-hant/docs/index.md",
+            "docs/pt_BR/guide-v2.md",
+          ]),
+        },
+      ),
+    ).toEqual([]);
+  });
+
+  it("FP16 needs a rename signal for code examples in documentation folders", () => {
+    expect(
+      compact({
+        "docs/guide-v2.md": [
+          "# Guide",
+          "",
+          "Create `src/foo.test.ts` and `test/basic.output.html`, then run",
+          "`npm run compile-schemas` and `npm start`.",
+          "",
+          "```bash",
+          "npm run deploy",
+          "```",
+          "",
+        ].join("\n"),
+        "guides/setup.md": "# Setup\n\n`src/app.ts` `npm run serve`\n",
+      }),
+    ).toEqual([]);
+  });
+
+  it("FP17 ignores a bare source directory name", () => {
+    expect(
+      compact({
+        "README.md": "# Lib\n\n`lib/` `scripts/` `.github/` `tests/` `src`\n",
+      }),
     ).toEqual([]);
   });
 
