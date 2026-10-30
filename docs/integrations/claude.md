@@ -1,7 +1,7 @@
 # StaleDocs with Claude Desktop or Claude Code
 
 This guide covers the Claude Code plugin and manual local MCP hosting for
-StaleDocs `0.5.0-beta.1`. Neither path gives StaleDocs Claude.ai OAuth access
+StaleDocs `0.5.0-beta.2`. Neither path gives StaleDocs Claude.ai OAuth access
 or turns a host subscription into a direct-provider credential.
 
 For the complete command catalogue and beta boundaries, see [CLI.md](../CLI.md)
@@ -35,7 +35,7 @@ Restart Claude Code if it requests a restart. Use `/mcp` to confirm that the
 plugin's StaleDocs server is connected. The repository hosts its own
 marketplace; this is **not an approved listing in Anthropic's directory**.
 
-The plugin pins its local MCP command to `npx --yes staledocs@0.5.0-beta.1 --mcp`.
+The plugin pins its local MCP command to `npx --yes staledocs@0.5.0-beta.2 --mcp`.
 The first launch downloads the npm package and dependencies; subsequent launches
 use npm's cache. No StaleDocs provider key is required for drift analysis,
 preparation, or draft validation. Claude authenticates and bills its own model
@@ -86,7 +86,7 @@ or unversioned package.
 Install the published version:
 
 ```bash
-npm install -g staledocs@0.5.0-beta.1
+npm install -g staledocs@0.5.0-beta.2
 staledocs --version
 ```
 

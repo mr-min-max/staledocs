@@ -1,7 +1,7 @@
 # StaleDocs with Codex
 
 This guide covers the Codex plugin and manual local MCP setup for the StaleDocs
-`0.5.0-beta.1` CLI. The plugin commands below were checked with Codex CLI
+`0.5.0-beta.2` CLI. The plugin commands below were checked with Codex CLI
 0.163.0-alpha.10.2. It is not a ChatGPT web integration: ChatGPT web does not read
 local Codex configuration or local stdio MCP servers.
 
@@ -23,13 +23,13 @@ Start a new Codex session in the repository you want to check. `codex plugin lis
 shows `staledocs@staledocs` as `installed, enabled`, and `/mcp` in Codex shows the
 `staledocs` server. Remove it with `codex plugin remove staledocs@staledocs`.
 
-The plugin launches `npx --yes staledocs@0.5.0-beta.1 --mcp`. The first launch
+The plugin launches `npx --yes staledocs@0.5.0-beta.2 --mcp`. The first launch
 downloads the npm package; later launches use npm's cache.
 
 Without the plugin, add only the MCP server:
 
 ```bash
-codex mcp add staledocs -- npx --yes staledocs@0.5.0-beta.1 --mcp
+codex mcp add staledocs -- npx --yes staledocs@0.5.0-beta.2 --mcp
 codex mcp list
 ```
 

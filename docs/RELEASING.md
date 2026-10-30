@@ -6,11 +6,12 @@ This is the maintainer procedure for publishing StaleDocs. It separates reposito
 
 Merging a release-readiness pull request does not publish a package. The release workflow runs only after a matching `v*` tag is pushed. Do not create or push a release tag without a separate explicit publication decision made after every pre-release check below passes.
 
-## 0.5.0-beta.1 procedure
+## 0.5.0 beta procedure
 
-Identical to 0.4.0-beta.1, plus the MCP Registry job. After the release-readiness pull request merges, pin the exact `main` commit and repeat the gates on a clean checkout of it:
+Used for `0.5.0-beta.1` and `0.5.0-beta.2`; identical to 0.4.0-beta.1 plus the MCP Registry job. Set the version once, then follow the steps. After the release-readiness pull request merges, pin the exact `main` commit and repeat the gates on a clean checkout of it:
 
 ```bash
+version=0.5.0-beta.2 &&
 git fetch origin main &&
 release_sha="$(git rev-parse origin/main)" &&
 git switch --detach "$release_sha" &&
@@ -19,15 +20,17 @@ npm ci &&
 npm run verify:release &&
 npm run test:public-beta &&
 node scripts/public-beta-preflight.mjs --json --candidate-ref "$release_sha" &&
-node scripts/verify-release-candidate.mjs --main-ref origin/main --candidate-ref HEAD --tag v0.5.0-beta.1 --expected-sha "$release_sha" &&
+node scripts/verify-release-candidate.mjs --main-ref origin/main --candidate-ref HEAD --tag "v$version" --expected-sha "$release_sha" &&
 test -z "$(git status --porcelain=v1)"
 ```
+
+`test:public-beta` checks the npm state that is published before the tag, so `test:npm-published` names the previous release until the post-publication pull request below moves it.
 
 After a separate publication decision, tag that commit and push only the tag:
 
 ```bash
-git tag -a v0.5.0-beta.1 "$release_sha" -m "v0.5.0-beta.1" &&
-git push origin v0.5.0-beta.1
+git tag -a "v$version" "$release_sha" -m "v$version" &&
+git push origin "v$version"
 ```
 
 The `Release` workflow then runs `verify` on Node.js 22 and 24, `publish` (npm Trusted Publishing with provenance, npm `beta`), and, after npm accepts the package, `github-release` and `mcp-registry` in parallel. Confirm all four jobs:
@@ -35,17 +38,26 @@ The `Release` workflow then runs `verify` on Node.js 22 and 24, `publish` (npm T
 ```bash
 gh run list --workflow release.yml --limit 1
 gh run view <run id> --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'
-npm view staledocs@0.5.0-beta.1 version mcpName
+npm view "staledocs@$version" version mcpName
 ```
 
 Then promote the channels and move the Action tag:
 
 ```bash
-npx npm@latest dist-tag add staledocs@0.5.0-beta.1 latest
-npx npm@latest dist-tag add staledocs@0.5.0-beta.1 beta
+npx npm@latest dist-tag add "staledocs@$version" latest
+npx npm@latest dist-tag add "staledocs@$version" beta
 npm dist-tag ls staledocs
-git tag -f v0 v0.5.0-beta.1 && git push -f origin v0
+git tag -f -a v0 "v$version^{}" -m "StaleDocs v0 moving tag -> $version" && git push -f origin v0
 ```
+
+Finish with a post-publication pull request and the site:
+
+- Add a "Publication record" section to `docs/releases/v<version>.md`: the tag commit, the four jobs, the tarball SHA-256, and the promoted channels.
+- Move `test:npm-published` and its expectation in `tests/unit/release/public-beta-config.test.ts` to the new version, then run `npm run test:public-beta`.
+- Add an empty `## [Unreleased]` section to `CHANGELOG.md` with that pull request's bullet.
+- Update the version pin on staledocs.com.
+
+Public status lines name the current release and say that npm `latest`, npm `beta`, and the Action `v0` tag point to the current release, so they need no edit after publication.
 
 ### npm dist-tag with a passkey account
 

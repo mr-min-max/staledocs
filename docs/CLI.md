@@ -1,6 +1,6 @@
 # StaleDocs CLI reference
 
-This is the complete command catalogue for StaleDocs `0.5.0-beta.1`.
+This is the complete command catalogue for StaleDocs `0.5.0-beta.2`.
 The executable is `staledocs`. For provider credentials, subscription and API
 billing boundaries, repository safety details, and current caveats, see the
 [Public Beta guide](./PUBLIC_BETA.md), [Limitations](./LIMITATIONS.md), and
@@ -130,7 +130,7 @@ header is retained while the new entry is inserted after it.
 ```bash
 staledocs changelog
 staledocs changelog --from v0.3.0-beta.1 --to HEAD
-staledocs changelog --version 0.5.0-beta.1
+staledocs changelog --version 0.5.0-beta.2
 staledocs changelog --output docs/CHANGELOG.md
 staledocs changelog --dry-run --yes --strict-output
 staledocs changelog --mock
@@ -521,12 +521,12 @@ StaleDocs also provides a pre-commit hook for the Python pre-commit ecosystem:
 ```yaml
 repos:
   - repo: https://github.com/mr-min-max/staledocs
-    rev: v0.5.0-beta.1
+    rev: v0.5.0-beta.2
     hooks:
       - id: staledocs-check
 ```
 
-The immutable hook pin resolves after `0.5.0-beta.1` is published; the moving `v0` tag follows once the owner moves it.
+`rev` pins an immutable release tag; the moving `v0` tag follows the current release.
 
 The hook runs `staledocs check --since HEAD` on `pre-push`. It does not pass filenames.
 Install Node.js and `staledocs` before enabling it.
