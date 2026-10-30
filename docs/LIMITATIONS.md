@@ -17,7 +17,12 @@ before a document's first heading are not read. A path that names a file in
 another repository, such as an example project's source file, is reported
 when no such file exists here; write such paths with a placeholder, as in
 `src/<name>.ts`. Scripts are read from `package.json` manifests only; a
-document under an unreadable manifest gets no script findings.
+document under an unreadable manifest gets no script findings. A script or
+path is accepted when any workspace package has it, so a root document that
+names a script only one package defines is not reported. Bins are known from
+declared dependency names, a short table of bins named apart from their
+package (`tsc`, `changeset`, `playwright`, `biome`), and workspace `bin`
+fields; an undeclared bin run through pnpm, yarn, or bun is reported.
 
 The member rule checks only public TypeScript classes and interfaces reachable
 from a resolved package entry. It skips a type with `extends`, an index

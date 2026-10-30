@@ -961,6 +961,7 @@ function auditReportSchema(): ToolOutputSchema {
         properties: {
           documentationLimitReached: { type: "boolean" },
           treeLimitReached: { type: "boolean" },
+          manifestLimitReached: { type: "boolean" },
           boundaryLimitReached: { type: "boolean" },
         },
       },

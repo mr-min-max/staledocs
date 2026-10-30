@@ -56,6 +56,11 @@ export function renderAuditText(report: AuditReport): string {
       "Path rules skipped: the repository tree exceeds the listing bound.",
     );
   }
+  if (report.ignored?.manifestLimitReached === true) {
+    lines.push(
+      "Script rules skipped: the repository has more package manifests than the audit reads.",
+    );
+  }
   if (report.ignored?.documentationLimitReached === true) {
     lines.push("Documentation discovery stopped at its file limit.");
   }
