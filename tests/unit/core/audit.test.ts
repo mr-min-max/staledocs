@@ -173,7 +173,7 @@ describe("assessDocumentationAudit true positives", () => {
     ).toEqual([["AGENTS.md", "member-missing", "Options.retries"]]);
   });
 
-  it("checks package documents against root and package scripts", () => {
+  it("checks every document against the scripts of all packages", () => {
     const scripts = new Map<string, readonly string[] | null>([
       [".", ["build"]],
       ["packages/web", ["dev"]],
@@ -181,15 +181,63 @@ describe("assessDocumentationAudit true positives", () => {
     expect(
       compact(
         {
-          "README.md": "# Root\n\nRun `npm run dev`.\n",
+          "README.md":
+            "# Root\n\nIn `packages/web`, run `npm run dev`. Then `npm run serve`.\n",
           "packages/web/README.md":
             "# Web\n\nRun `npm run dev`, `npm run build`, then `npm run serve`.\n",
         },
         { scripts },
       ),
     ).toEqual([
-      ["README.md", "script-missing", "npm run dev"],
+      ["README.md", "script-missing", "npm run serve"],
       ["packages/web/README.md", "script-missing", "npm run serve"],
+    ]);
+  });
+
+  it("TP11 reports bins under npm run and pnpm run, and bare names nothing declares", () => {
+    expect(
+      compact(
+        {
+          "README.md":
+            "# Lib\n\n`npm run tsx` `pnpm run vitest` `pnpm jest` `bun run nope`\n",
+        },
+        { binaries: new Set(["tsx", "vitest"]) },
+      ),
+    ).toEqual([
+      ["README.md", "script-missing", "bun run nope"],
+      ["README.md", "script-missing", "npm run tsx", "test"],
+      ["README.md", "script-missing", "pnpm jest", "test"],
+      ["README.md", "script-missing", "pnpm run vitest", "test"],
+    ]);
+  });
+
+  it("TP12 reports a path that neither the root nor any package has", () => {
+    expect(
+      compact(
+        { "AGENTS.md": "# Agents\n\n`src/gone.ts` `test/gone.test.ts`\n" },
+        {
+          tree: new Set([...TREE, "packages/web/test/app.test.ts"]),
+          scripts: new Map([
+            [".", ["build"]],
+            ["packages/web", ["dev"]],
+          ]),
+          packageRoots: ["src/pkg"],
+        },
+      ),
+    ).toEqual([
+      ["AGENTS.md", "path-missing", "src/gone.ts"],
+      ["AGENTS.md", "path-missing", "test/gone.test.ts"],
+    ]);
+  });
+
+  it("TP13 reports extensionless and .html links with no Markdown page", () => {
+    expect(
+      compact({
+        "README.md": "# Lib\n\n[r](./docs/removed) [o](docs/old.html#top)\n",
+      }),
+    ).toEqual([
+      ["README.md", "path-missing", "docs/old.html"],
+      ["README.md", "path-missing", "docs/removed"],
     ]);
   });
 
@@ -431,6 +479,91 @@ describe("assessDocumentationAudit false positives", () => {
     ).toEqual([]);
   });
 
+  it("FP10 accepts local bins and file runs that need no script", () => {
+    expect(
+      compact(
+        {
+          "README.md": [
+            "# Lib",
+            "",
+            "`pnpm tsx scripts/x.ts` `pnpm vitest` `yarn eslint .` `yarn run eslint .`",
+            "`bun vitest` `bun run vitest` `pnpm changeset` `pnpm tsc --noEmit`",
+            "`bun run server.ts` `bun bench.mts` `bun ./scripts/x.js` `bun src/cli.ts`",
+            "",
+          ].join("\n"),
+        },
+        { binaries: new Set(["changeset", "eslint", "tsc", "tsx", "vitest"]) },
+      ),
+    ).toEqual([]);
+  });
+
+  it("FP11 resolves spans against workspace and Python packages", () => {
+    expect(
+      compact(
+        {
+          "AGENTS.md": [
+            "# Agents",
+            "",
+            "`src/main.ts` `test/app.test.ts` `src/` `test/` `lib/_hooks.py`",
+            "`widgets/old.ts`",
+            "",
+          ].join("\n"),
+        },
+        {
+          tree: new Set([
+            ...TREE,
+            "packages/web/test/app.test.ts",
+            "packages/web/widgets/new.ts",
+            "src/pkg/__init__.py",
+            "src/pkg/lib/_hooks.py",
+          ]),
+          scripts: new Map([
+            [".", ["build"]],
+            ["packages/web", ["dev"]],
+          ]),
+          packageRoots: ["src/pkg"],
+        },
+      ),
+    ).toEqual([]);
+  });
+
+  it("FP12 resolves extensionless and .html links to Markdown pages", () => {
+    expect(
+      compact({
+        "README.md": [
+          "# Lib",
+          "",
+          "[g](./docs/guide-v2) [h](docs/guide-v2.html#install) [m](docs/My%20Guide)",
+          "",
+        ].join("\n"),
+        "docs/guide-v2.md": "# Guide\n\n[readme](../README) [self](./guide-v2#top)\n",
+      }),
+    ).toEqual([]);
+  });
+
+  it("FP13 ignores package-manager built-in commands", () => {
+    expect(
+      compact(
+        {
+          "README.md": [
+            "# Lib",
+            "",
+            "`pnpm patch left-pad` `pnpm patch-commit ./tmp` `pnpm patch-remove x`",
+            "`yarn patch left-pad` `yarn patch-commit -s ./tmp` `bun patch left-pad`",
+            "`pnpm import` `pnpm fetch` `pnpm deploy out` `pnpm env use 22`",
+            "`pnpm approve-builds` `pnpm licenses list` `pnpm root` `pnpm bin`",
+            "`pnpm setup` `pnpm doctor` `pnpm self-update` `pnpm catalog`",
+            "`yarn unplug x` `yarn constraints` `yarn explain x` `yarn node x`",
+            "`yarn npm publish` `yarn set version stable` `yarn plugin import x`",
+            "`yarn search x` `yarn stage` `yarn bin` `bun pm ls` `bun upgrade`",
+            "",
+          ].join("\n"),
+        },
+        { scripts: new Map([[".", ["lint"]]]) },
+      ),
+    ).toEqual([]);
+  });
+
   it("FP6 skips removed lines in diff and patch fences", () => {
     expect(
       compact({
@@ -525,6 +658,15 @@ describe("assessDocumentationAudit report", () => {
       "script-missing",
     ]);
     expect(report.ignored).toEqual({ treeLimitReached: true });
+  });
+
+  it("skips script rules and says so when the manifest listing exceeds its bound", () => {
+    const report = audit(docs, { manifestLimitReached: true });
+    expect(report.findings.map(({ kind }) => kind)).toEqual([
+      "path-missing",
+      "path-missing",
+    ]);
+    expect(report.ignored).toEqual({ manifestLimitReached: true });
   });
 
   it("carries the documentation and boundary limit flags", () => {
