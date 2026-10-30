@@ -17,6 +17,7 @@ const TREE = new Set([
   "packages/web/package.json",
   "packages/web/README.md",
   "packages/web/src/main.ts",
+  "examples/docker/Dockerfile",
 ]);
 
 function audit(
@@ -197,6 +198,40 @@ describe("assessDocumentationAudit true positives", () => {
       compact({ "README.md": "# Lib\n\n```text\nnpm run old\n```\n" }),
     ).toEqual([["README.md", "script-missing", "npm run old"]]);
   });
+
+  it("TP8 reports a directory link with a trailing slash that is absent", () => {
+    expect(
+      compact({
+        "README.md": "# Lib\n\nSee [examples](./examples/missing/).\n",
+        "docs/guide-v2.md": "# Guide\n\nSee [old](../examples/old/).\n",
+      }),
+    ).toEqual([
+      ["README.md", "path-missing", "examples/missing/"],
+      ["docs/guide-v2.md", "path-missing", "examples/old/"],
+    ]);
+  });
+
+  it("TP9 reports a missing path that carries a line range", () => {
+    expect(
+      compact({
+        "README.md": [
+          "# Lib",
+          "",
+          "`src/core/old.ts:878-898` `src/core/gone.ts#L3-L7`",
+          "",
+        ].join("\n"),
+      }),
+    ).toEqual([
+      ["README.md", "path-missing", "src/core/gone.ts"],
+      ["README.md", "path-missing", "src/core/old.ts"],
+    ]);
+  });
+
+  it("TP10 still reports a script followed by a placeholder argument", () => {
+    expect(
+      compact({ "README.md": "# Lib\n\nRun `npm run bulid <target>`.\n" }),
+    ).toEqual([["README.md", "script-missing", "npm run bulid", "build"]]);
+  });
 });
 
 describe("assessDocumentationAudit false positives", () => {
@@ -350,6 +385,49 @@ describe("assessDocumentationAudit false positives", () => {
           ]),
         },
       ),
+    ).toEqual([]);
+  });
+
+  it("FP7 accepts directory links with a trailing slash", () => {
+    expect(
+      compact({
+        "README.md": [
+          "# Lib",
+          "",
+          "[docker](./examples/docker/) [web](packages/web/) [src](src/)",
+          "[docker again](examples/docker/#usage)",
+          "",
+        ].join("\n"),
+        "docs/guide-v2.md": "# Guide\n\n[web](../packages/web/src/)\n",
+      }),
+    ).toEqual([]);
+  });
+
+  it("FP8 strips line numbers and ranges from existing paths", () => {
+    expect(
+      compact({
+        "README.md": [
+          "# Lib",
+          "",
+          "`src/client.ts:878-898` `src/client.ts:1-2` `src/index.ts:3:7-3:9`",
+          "`src/client.ts#L10` `src/client.ts#L10-L20`",
+          "",
+        ].join("\n"),
+      }),
+    ).toEqual([]);
+  });
+
+  it("FP9 ignores script names that continue into a placeholder", () => {
+    expect(
+      compact({
+        "README.md": [
+          "# Lib",
+          "",
+          "`pnpm server:<folder-name>` `npm run test:{unit,e2e}`",
+          "`yarn build:$TARGET` `npm run <script>` `bun run lint:[name]`",
+          "",
+        ].join("\n"),
+      }),
     ).toEqual([]);
   });
 
