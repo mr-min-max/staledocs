@@ -175,7 +175,10 @@ const GENERATED_PREFIXES = [
   ".git/",
 ];
 const NON_PATH_CHARACTERS = /[\s*?{}<>$~`]/u;
-const LINE_SUFFIX = /:\d+(?::\d+)?$/u;
+// `path:12`, `path:12:3`, `path:878-898`, and GitHub anchors `path#L10-L20`.
+const LINE_SUFFIX = /(?::\d+(?:[:-]\d+)*|#L\d+(?:-L\d+)?)$/u;
+// A name that runs into a placeholder, brace list, or variable is a template.
+const SCRIPT_PLACEHOLDER = /^[<{[$%*]/u;
 const URI_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/u;
 const MEMBER_REFERENCE = /^([A-Z][A-Za-z0-9_]{3,})\.([A-Za-z_][A-Za-z0-9_]*)$/u;
 const TYPESCRIPT_SOURCE = /\.(?:ts|tsx|mts|cts)$/iu;
@@ -319,8 +322,9 @@ export function assessDocumentationAudit(input: AuditInput): AuditReport {
     }
     if (tree === undefined) continue;
     for (const target of section.linkTargets) {
-      if (existsInTree(tree, target)) continue;
-      const decoded = decodeTarget(target);
+      const path = target.endsWith("/") ? target.slice(0, -1) : target;
+      if (path.length === 0 || existsInTree(tree, path)) continue;
+      const decoded = decodeTarget(path);
       if (decoded !== undefined && existsInTree(tree, decoded)) continue;
       add({
         ...location,
@@ -550,6 +554,7 @@ function missingScript(
   if (name.startsWith("-") || PACKAGE_MANAGER_COMMANDS.has(name)) {
     return undefined;
   }
+  if (SCRIPT_PLACEHOLDER.test(span.slice(invocation.length))) return undefined;
   if (run === undefined) {
     if (manager === "npm" && !NPM_SCRIPT_ALIASES.has(name)) return undefined;
     if (manager === "bun" && BUN_NATIVE_COMMANDS.has(name)) return undefined;
