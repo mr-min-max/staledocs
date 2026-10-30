@@ -159,6 +159,62 @@ describe("audit command", () => {
     ]);
   });
 
+  it("accepts declared dependency and workspace bins without a script", async () => {
+    write(
+      root,
+      "package.json",
+      JSON.stringify({
+        name: "lib",
+        scripts: { build: "tsc", test: "jest" },
+        devDependencies: {
+          tsx: "^4.0.0",
+          typescript: "^5.0.0",
+          "@changesets/cli": "^2.0.0",
+        },
+      }) + "\n",
+    );
+    write(
+      root,
+      "packages/tool/package.json",
+      '{"name":"@acme/tool","bin":{"acme":"cli.js"},"peerDependencies":{"eslint":"*"}}\n',
+    );
+    write(root, "packages/single/package.json", '{"name":"@acme/single","bin":"cli.js"}\n');
+    write(
+      root,
+      "README.md",
+      [
+        "# Lib",
+        "",
+        "`pnpm tsx x.ts` `pnpm tsc --noEmit` `pnpm changeset` `pnpm acme`",
+        "`pnpm single` `yarn eslint .` `pnpm vitest` `npm run tsx`",
+        "",
+      ].join("\n"),
+    );
+    const output = io();
+    await executeAuditCommand({ json: true, path: ["README.md"] }, output, root);
+    expect(findingsOf(output)).toEqual([
+      ["README.md", "script-missing", "npm run tsx"],
+      ["README.md", "script-missing", "pnpm vitest"],
+    ]);
+  });
+
+  it("resolves root spans against workspace and Python package directories", async () => {
+    write(root, "packages/web/package.json", '{"name":"web"}\n');
+    write(root, "packages/web/src/metadata.ts", "export const name = 'web';\n");
+    write(root, "src/pkg/__init__.py", "");
+    write(root, "src/pkg/lib/_hooks.py", "");
+    write(
+      root,
+      "AGENTS.md",
+      "# Agents\n\n`src/metadata.ts` `lib/_hooks.py` `src/gone.ts`\n",
+    );
+    const output = io();
+    await executeAuditCommand({ json: true, path: ["AGENTS.md"] }, output, root);
+    expect(findingsOf(output)).toEqual([
+      ["AGENTS.md", "path-missing", "src/gone.ts"],
+    ]);
+  });
+
   it("reports only members that a closed public TypeScript type does not declare", async () => {
     write(
       root,
