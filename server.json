@@ -8,12 +8,12 @@
     "source": "github"
   },
   "websiteUrl": "https://staledocs.com",
-  "version": "0.5.0-beta.1",
+  "version": "0.5.0-beta.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "staledocs",
-      "version": "0.5.0-beta.1",
+      "version": "0.5.0-beta.2",
       "transport": { "type": "stdio" },
       "runtimeHint": "npx",
       "packageArguments": [{ "type": "positional", "value": "--mcp" }]
